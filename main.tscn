@@ -372,6 +372,10 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="SelectedContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=1839187124]
+layout_mode = 2
+alignment = 1
+
 [node name="HandContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=303839749]
 layout_mode = 2
 alignment = 1

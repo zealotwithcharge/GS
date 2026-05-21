@@ -366,21 +366,45 @@ func place_blank_on_grid():
 		
 func update_hand_ui():
 	var hand_container = get_node("VBoxContainer/HandContainer")
+	var selected_container = get_node("VBoxContainer/SelectedContainer")
 
 	for child in hand_container.get_children():
 		child.queue_free()
 
+	for child in selected_container.get_children():
+		child.queue_free()
+
+	# HAND
 	for card in hand:
+		if selected_cards.has(card):
+			continue
+
 		var scene = preload("res://Card.tscn")
 		var card_ui = scene.instantiate()
 
-
-		card_ui.setup(card, selected_cards.has(card))
+		card_ui.setup(card, false)
 
 		card_ui.pressed.connect(_on_card_pressed.bind(card))
 
 		hand_container.add_child(card_ui)
 
+	# PREVIEW ROW
+	for card in selected_cards:
+		var scene = preload("res://Card.tscn")
+		var card_ui = scene.instantiate()
+
+		card_ui.setup(card, true)
+
+		# slightly smaller
+		card_ui.scale = Vector2(0.8, 0.8)
+
+		# clicking removes from queue
+		card_ui.pressed.connect(_on_selected_card_pressed.bind(card))
+
+		selected_container.add_child(card_ui)
+func _on_selected_card_pressed(card):
+	selected_cards.erase(card)
+	update_hand_ui()
 func update_grid_ui():
 	reset_grid_visuals()
 
