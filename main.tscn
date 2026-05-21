@@ -1,0 +1,381 @@
+[gd_scene format=3 uid="uid://n145wwlj7v06"]
+
+[ext_resource type="Script" uid="uid://ctoxwa0mq70au" path="res://Main/game_manager.gd" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://bdfeq1k00j4n6" path="res://play_button.gd" id="1_ig7tw"]
+
+[node name="Main" type="Control" unique_id=511279096]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_0xm2m")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=515578274]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="ScoreLabel" type="Label" parent="VBoxContainer" unique_id=1124615574]
+layout_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="GridContainer" type="GridContainer" parent="VBoxContainer" unique_id=1875834840]
+layout_mode = 2
+columns = 5
+
+[node name="Control" type="Control" parent="VBoxContainer/GridContainer" unique_id=1365135427]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control" unique_id=1512276334]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control2" type="Control" parent="VBoxContainer/GridContainer" unique_id=627472154]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control2" unique_id=22502028]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control3" type="Control" parent="VBoxContainer/GridContainer" unique_id=860579799]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control3" unique_id=137729840]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control4" type="Control" parent="VBoxContainer/GridContainer" unique_id=883808663]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control4" unique_id=465011188]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control5" type="Control" parent="VBoxContainer/GridContainer" unique_id=529568267]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control5" unique_id=1705141344]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control6" type="Control" parent="VBoxContainer/GridContainer" unique_id=2140066801]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control6" unique_id=1354900175]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control7" type="Control" parent="VBoxContainer/GridContainer" unique_id=1858916121]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control7" unique_id=991600699]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control8" type="Control" parent="VBoxContainer/GridContainer" unique_id=740976362]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control8" unique_id=2138302980]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control9" type="Control" parent="VBoxContainer/GridContainer" unique_id=201822478]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control9" unique_id=1235576280]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control10" type="Control" parent="VBoxContainer/GridContainer" unique_id=608163912]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control10" unique_id=1200246318]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control11" type="Control" parent="VBoxContainer/GridContainer" unique_id=6780515]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control11" unique_id=1363109952]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control12" type="Control" parent="VBoxContainer/GridContainer" unique_id=2048075369]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control12" unique_id=1206248195]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control13" type="Control" parent="VBoxContainer/GridContainer" unique_id=598653915]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control13" unique_id=1438341948]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control14" type="Control" parent="VBoxContainer/GridContainer" unique_id=1913086271]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control14" unique_id=1858626327]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control15" type="Control" parent="VBoxContainer/GridContainer" unique_id=532260437]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control15" unique_id=1955615649]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control16" type="Control" parent="VBoxContainer/GridContainer" unique_id=686132299]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control16" unique_id=644464629]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control17" type="Control" parent="VBoxContainer/GridContainer" unique_id=603487590]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control17" unique_id=397311542]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control18" type="Control" parent="VBoxContainer/GridContainer" unique_id=493974878]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control18" unique_id=1863876817]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control19" type="Control" parent="VBoxContainer/GridContainer" unique_id=1844640426]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control19" unique_id=1693324966]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control20" type="Control" parent="VBoxContainer/GridContainer" unique_id=387586134]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control20" unique_id=1426544167]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control21" type="Control" parent="VBoxContainer/GridContainer" unique_id=1267825000]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control21" unique_id=864809962]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control22" type="Control" parent="VBoxContainer/GridContainer" unique_id=1372977720]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control22" unique_id=1730686989]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control23" type="Control" parent="VBoxContainer/GridContainer" unique_id=2010056434]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control23" unique_id=661181388]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control24" type="Control" parent="VBoxContainer/GridContainer" unique_id=1431688697]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control24" unique_id=1504507907]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Control25" type="Control" parent="VBoxContainer/GridContainer" unique_id=352268042]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/GridContainer/Control25" unique_id=1746826583]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HandContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=303839749]
+layout_mode = 2
+alignment = 1
+
+[node name="PlayButton" type="Button" parent="VBoxContainer" unique_id=2003499558]
+layout_mode = 2
+script = ExtResource("1_ig7tw")
