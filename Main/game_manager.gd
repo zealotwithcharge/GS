@@ -1,5 +1,44 @@
 extends Node
-const HANDS_PER_GRADE = 5
+
+const HAND_SIZE := 10
+const MAX_PLAY := 5
+const GRID_SIZE := 5
+const HANDS_PER_GRADE := 5
+const CARD_SCENE := preload("res://Card.tscn")
+@onready var permanent_item_bar = $RootUI/PermanentItemBar
+var owned_permanents = []
+var shop_permanent_items = []
+var shop_consumable_items = []
+
+var score_upgrades = {
+	"H3": 0, "H4": 0, "H5": 0,
+	"V3": 0, "V4": 0, "V5": 0,
+	"D3": 0, "D4": 0, "D5": 0
+}
+
+var permanent_pool = [
+	{"name": "Gold Star", "cost": 6, "description": "Placeholder permanent item."},
+	{"name": "Pencil Case", "cost": 7, "description": "Placeholder permanent item."},
+	{"name": "Eraser", "cost": 8, "description": "Placeholder permanent item."},
+	{"name": "Hall Pass", "cost": 9, "description": "Placeholder permanent item."},
+	{"name": "Detention Slip", "cost": 10, "description": "Placeholder permanent item."}
+]
+
+var consumable_pool = [
+	{"id": "H3", "name": "H3", "cost": 6, "direction": "H", "length": 3, "description": "Horizontal 3-letter words score as if they were 1 letter longer."},
+	{"id": "H4", "name": "H4", "cost": 5, "direction": "H", "length": 4, "description": "Horizontal 4-letter words score as if they were 1 letter longer."},
+	{"id": "H5", "name": "H5", "cost": 3, "direction": "H", "length": 5, "description": "Horizontal 5-letter words score as if they were 1 letter longer."},
+
+	{"id": "V3", "name": "V3", "cost": 6, "direction": "V", "length": 3, "description": "Vertical 3-letter words score as if they were 1 letter longer."},
+	{"id": "V4", "name": "V4", "cost": 5, "direction": "V", "length": 4, "description": "Vertical 4-letter words score as if they were 1 letter longer."},
+	{"id": "V5", "name": "V5", "cost": 3, "direction": "V", "length": 5, "description": "Vertical 5-letter words score as if they were 1 letter longer."},
+
+	{"id": "D3", "name": "D3", "cost": 7, "direction": "D", "length": 3, "description": "Diagonal 3-letter words score as if they were 1 letter longer."},
+	{"id": "D4", "name": "D4", "cost": 5, "direction": "D", "length": 4, "description": "Diagonal 4-letter words score as if they were 1 letter longer."},
+	{"id": "D5", "name": "D5", "cost": 3, "direction": "D", "length": 5, "description": "Diagonal 5-letter words score as if they were 1 letter longer."}
+]
+@onready var perma_shop = $RootUI/ShopPanel/PermaShop
+@onready var consume_shop = $RootUI/ShopPanel/ConsumeShop
 
 enum GamePhase {
 	PLAYING,
@@ -8,21 +47,29 @@ enum GamePhase {
 	WIN
 }
 
-var game_phase = GamePhase.PLAYING
+var game_phase := GamePhase.PLAYING
 
-var money = 0
-var hands_left = HANDS_PER_GRADE
+var money := 25
+var hands_left := HANDS_PER_GRADE
+var total_score := 0
 
-var school_index = 0
-var grade_index = 0
-@onready var stage_label = get_node("GameplayUI/StageLabel")
-@onready var money_label = get_node("GameplayUI/MoneyLabel")
-@onready var target_label = get_node("GameplayUI/TargetLabel")
-@onready var hands_label = get_node("GameplayUI/HandsLabel")
-@onready var shop_panel = get_node("GameplayUI/ShopPanel")
-@onready var next_grade_button = get_node("GameplayUI/ShopPanel/NextGradeButton")
+var school_index := 0
+var grade_index := 0
 
-var schools = [
+var deck := []
+var discard := []
+var hand := []
+var selected_cards := []
+
+var grid := []
+var letter_mults := []
+
+var current_row := 0
+var current_col := 0
+
+var dictionary := {}
+
+var schools := [
 	{
 		"name": "Elementary School",
 		"grades": 5,
@@ -46,43 +93,41 @@ var schools = [
 	}
 ]
 
+@onready var top_bar = $RootUI/TopBar
+@onready var gameplay_ui = $RootUI/GameplayUI
+@onready var shop_panel = $RootUI/ShopPanel
 
+@onready var stage_label = $RootUI/TopBar/StageLabel
+@onready var money_label = $RootUI/TopBar/MoneyLabel
+@onready var target_label = $RootUI/TopBar/TargetLabel
+@onready var hands_label = $RootUI/TopBar/HandsLabel
 
-func get_current_target_score():
-	var school = get_current_school()
-	return school["base_target"] + grade_index * 100
+@onready var score_label = $RootUI/GameplayUI/ScoreLabel
+@onready var grid_container = $RootUI/GameplayUI/GridContainer
+@onready var selected_container = $RootUI/GameplayUI/SelectedContainer
+@onready var hand_container = $RootUI/GameplayUI/HandContainer
 
-
-func get_current_reward():
-	var school = get_current_school()
-	return school["reward"] + grade_index
-func check_grade_complete():
-	if total_score >= get_current_target_score():
-		complete_grade()
-const HAND_SIZE = 10
-const MAX_PLAY = 5
-const GRID_SIZE = 5
-var total_score = 0
-@onready var score_label = get_node("GameplayUI/ScoreLabel")
-var deck = []
-var discard = []
-var letter_mults = [] # same shape as grid
-var hand = []
-var selected_cards = []
-var current_grade_modifier = null
-var grid = []
-
-var current_row = 0
-var current_col = 0
+@onready var next_grade_button = $RootUI/ShopPanel/NextGradeButton
 
 func _ready():
 	load_dictionary()
 	create_starting_deck()
 	create_grid()
-	draw_to_hand()
-	update_stage_ui()
+
 	shop_panel.visible = false
+	gameplay_ui.visible = true
+
 	next_grade_button.pressed.connect(_on_next_grade_pressed)
+
+	draw_to_hand()
+	update_grid_ui()
+	update_stage_ui()
+
+
+# ------------------------------------------------------------
+# Stage / economy
+# ------------------------------------------------------------
+
 func get_current_school():
 	return schools[school_index]
 
@@ -107,10 +152,171 @@ func update_stage_ui():
 	target_label.text = "Target: " + str(get_target_score())
 	hands_label.text = "Hands: " + str(hands_left)
 	score_label.text = "Score: " + str(total_score)
-	
+
+
+func check_grade_result():
+	if total_score >= get_target_score():
+		complete_grade()
+		return
+
+	if hands_left <= 0:
+		fail_grade()
+
+
+func complete_grade():
+	game_phase = GamePhase.SHOP
+
+	var reward = get_grade_reward()
+	money += reward
+
+	print("Passed ", get_current_school()["name"], " Grade ", get_current_grade_number())
+	print("Earned $", reward)
+
+	open_shop()
+
+
+func fail_grade():
+	game_phase = GamePhase.GAME_OVER
+	print("FAILED GRADE")
+
+
+func open_shop():
+	game_phase = GamePhase.SHOP
+	gameplay_ui.visible = false
+	shop_panel.visible = true
+
+	generate_shop()
+	update_stage_ui()
+func generate_shop():
+	clear_container(perma_shop)
+	clear_container(consume_shop)
+
+	shop_permanent_items = get_random_items(permanent_pool, 3)
+	shop_consumable_items = get_random_items(consumable_pool, 4)
+
+	for item in shop_permanent_items:
+		var button = make_shop_button(item)
+		button.pressed.connect(_on_permanent_item_pressed.bind(item, button))
+		perma_shop.add_child(button)
+
+	for item in shop_consumable_items:
+		var button = make_shop_button(item)
+		button.pressed.connect(_on_consumable_item_pressed.bind(item, button))
+		consume_shop.add_child(button)
+		
+func clear_container(container):
+	for child in container.get_children():
+		child.queue_free()
+
+
+func get_random_items(pool, count):
+	var copy = pool.duplicate()
+	copy.shuffle()
+
+	var result = []
+
+	for i in range(min(count, copy.size())):
+		result.append(copy[i])
+
+	return result
+func _on_permanent_item_pressed(item, button):
+	if money < item["cost"]:
+		print("Not enough money")
+		return
+
+	money -= item["cost"]
+	owned_permanents.append(item)
+	update_owned_permanent_ui()
+
+	button.disabled = true
+	button.text = item["name"] + " - BOUGHT"
+
+	update_stage_ui()
+	print("Bought permanent: ", item["name"])
+func update_owned_permanent_ui():
+	for child in permanent_item_bar.get_children():
+		child.queue_free()
+
+	for item in owned_permanents:
+		var label = Label.new()
+		label.text = item["name"]
+		label.tooltip_text = item["description"]
+		permanent_item_bar.add_child(label)
+func _on_consumable_item_pressed(item, button):
+	if money < item["cost"]:
+		print("Not enough money")
+		return
+
+	money -= item["cost"]
+
+	var id = item["id"]
+	score_upgrades[id] += 1
+
+	button.disabled = true
+	button.text = item["name"] + " - BOUGHT"
+
+	update_stage_ui()
+	print("Bought consumable: ", item["name"])
+func make_shop_button(item):
+	var button = Button.new()
+	button.text = item["name"] + " - $" + str(item["cost"])
+	button.tooltip_text = item["description"]
+	button.custom_minimum_size = Vector2(140, 60)
+
+	return button	
+		
+func _on_next_grade_pressed():
+	if game_phase != GamePhase.SHOP:
+		return
+
+	advance_grade()
+
+
+func advance_grade():
+	grade_index += 1
+
+	if grade_index >= get_current_school()["grades"]:
+		grade_index = 0
+		school_index += 1
+
+		if school_index >= schools.size():
+			win_run()
+			return
+
+	start_grade()
+
+
+
+func start_grade():
+	game_phase = GamePhase.PLAYING
+
+	gameplay_ui.visible = true
+	shop_panel.visible = false
+
+	total_score = 0
+	hands_left = HANDS_PER_GRADE
+	current_row = 0
+	current_col = 0
+	selected_cards.clear()
+
+	create_grid()
+	update_grid_ui()
+	update_hand_ui()
+	update_stage_ui()
+
+func win_run():
+	game_phase = GamePhase.WIN
+	gameplay_ui.visible = false
+	shop_panel.visible = false
+	print("YOU GRADUATED")
+
+
+# ------------------------------------------------------------
+# Deck / hand
+# ------------------------------------------------------------
+
 func create_starting_deck():
 	deck.clear()
-
 
 	var letters = [
 		"A","A","A","A",
@@ -124,196 +330,19 @@ func create_starting_deck():
 		"D","D",
 		"G","M","P","B","C","F"
 	]
-	print(letters)
+
 	var uid = 0
 
 	for l in letters:
-		var card = {
+		deck.append({
 			"id": uid,
 			"letter": l
-		}
-
-		deck.append(card)
+		})
 		uid += 1
 
 	deck.shuffle()
 
-func create_grid():
-	grid.clear()
-	letter_mults.clear()
 
-	for y in range(GRID_SIZE):
-		var row = []
-		var mult_row = []
-
-		for x in range(GRID_SIZE):
-			row.append("_")
-			mult_row.append(0)
-
-		grid.append(row)
-		letter_mults.append(mult_row)
-		
-func score_grid():
-	var total_score = 0
-
-	var horizontal_lines = get_horizontal_lines()
-	var vertical_lines = get_vertical_lines()
-	var diagonal_lines = get_diagonal_lines()
-
-	for length in range(3, GRID_SIZE + 1):
-		total_score += await score_lines_by_length(horizontal_lines, length)
-
-	for length in range(3, GRID_SIZE + 1):
-		total_score += await score_lines_by_length(vertical_lines, length)
-
-	for length in range(3, GRID_SIZE + 1):
-		total_score += await score_lines_by_length(diagonal_lines, length)
-
-	print("Score: ", total_score)
-	return total_score
-func get_all_scoring_lines():
-	var lines = []
-
-	# horizontals
-	for y in range(GRID_SIZE):
-		var line = []
-		for x in range(GRID_SIZE):
-			line.append([y, x])
-		lines.append(line)
-
-	# verticals
-	for x in range(GRID_SIZE):
-		var line = []
-		for y in range(GRID_SIZE):
-			line.append([y, x])
-		lines.append(line)
-
-	# diagonals down-right
-	for start_x in range(GRID_SIZE):
-		lines.append(make_line(0, start_x, 1, 1))
-
-	for start_y in range(1, GRID_SIZE):
-		lines.append(make_line(start_y, 0, 1, 1))
-
-	# diagonals down-left
-	for start_x in range(GRID_SIZE):
-		lines.append(make_line(0, start_x, 1, -1))
-
-	for start_y in range(1, GRID_SIZE):
-		lines.append(make_line(start_y, GRID_SIZE - 1, 1, -1))
-
-	return lines
-
-func score_lines_by_length(lines, length):
-	var score = 0
-
-	for line in lines:
-		if line.size() < length:
-			continue
-
-		for start in range(0, line.size() - length + 1):
-			var combo = line.slice(start, start + length)
-
-			if combo_has_blank(combo):
-				continue
-
-			var word = combo_to_string(combo)
-
-			if is_valid_combo(word):
-				var combo_score = score_combo(combo)
-				score += combo_score
-
-				print(word, " scored ", combo_score)
-
-				await animate_combo(combo)
-				await show_combo_score(combo, combo_score)
-
-	return score
-func combo_has_blank(combo):
-	for pos in combo:
-		var y = pos[0]
-		var x = pos[1]
-
-		if grid[y][x] == "_":
-			return true
-
-	return false
-func score_line(line):
-	var score = 0
-
-	for length in range(3, line.size() + 1):
-		for start in range(0, line.size() - length + 1):
-			var combo = line.slice(start, start + length)
-			var word = combo_to_string(combo)
-
-			if is_valid_combo(word):
-				var combo_score = score_combo(combo)
-				score += combo_score
-
-				print(word, " scored ", combo_score)
-
-				await animate_combo(combo)
-				await show_combo_score(combo, combo_score)
-
-	return score
-func show_combo_score(combo, combo_score):
-	var grid_container = get_node("GameplayUI/GridContainer")
-
-	var start_pos = Vector2.ZERO
-
-	for pos in combo:
-		var y = pos[0]
-		var x = pos[1]
-		var index = y * GRID_SIZE + x
-		var cell = grid_container.get_child(index)
-
-		start_pos += cell.global_position + cell.size / 2
-
-	start_pos /= combo.size()
-
-	var end_pos = score_label.global_position + score_label.size / 2
-
-	var floating_label = Label.new()
-	floating_label.text = "+" + str(combo_score)
-	floating_label.global_position = start_pos
-	floating_label.z_index = 100
-	floating_label.add_theme_font_size_override("font_size", 28)
-
-	get_tree().current_scene.add_child(floating_label)
-
-	var tween = create_tween()
-
-	# pop up slightly first
-	tween.tween_property(floating_label, "scale", Vector2(1.3, 1.3), 0.08)
-	tween.tween_property(floating_label, "scale", Vector2(1.0, 1.0), 0.08)
-
-	# fly to score label
-	tween.tween_property(floating_label, "global_position", end_pos, 0.35)
-
-	# disappear into score label
-	tween.parallel().tween_property(floating_label, "modulate:a", 0.0, 0.25)
-	tween.parallel().tween_property(floating_label, "scale", Vector2(0.4, 0.4), 0.25)
-
-	await tween.finished
-
-	floating_label.queue_free()
-
-	total_score += combo_score
-	score_label.text = "Score: " + str(total_score)
-
-	# little bump on total score
-	var bump = create_tween()
-	bump.tween_property(score_label, "scale", Vector2(1.2, 1.2), 0.08)
-	bump.tween_property(score_label, "scale", Vector2(1.0, 1.0), 0.08)
-func combo_to_string(combo):
-	var s = ""
-
-	for pos in combo:
-		var y = pos[0]
-		var x = pos[1]
-		s += grid[y][x]
-
-	return s		
 func draw_card():
 	if deck.is_empty():
 		reshuffle_discard()
@@ -323,34 +352,47 @@ func draw_card():
 
 	return deck.pop_back()
 
+
 func reshuffle_discard():
 	deck = discard.duplicate()
 	discard.clear()
 	deck.shuffle()
+
 
 func draw_to_hand():
 	while hand.size() < HAND_SIZE:
 		var card = draw_card()
 
 		if card == null:
-			return
+			break
 
 		hand.append(card)
 
 	update_hand_ui()
 
+
 func toggle_select(card):
-	print("heo")
-	
 	if selected_cards.has(card):
 		selected_cards.erase(card)
-
 	else:
 		if selected_cards.size() < MAX_PLAY:
 			selected_cards.append(card)
 
-
 	update_hand_ui()
+
+
+func _on_card_pressed(card):
+	toggle_select(card)
+
+
+func _on_selected_card_pressed(card):
+	selected_cards.erase(card)
+	update_hand_ui()
+
+
+# ------------------------------------------------------------
+# Play hand
+# ------------------------------------------------------------
 
 func play_selected_cards():
 	if game_phase != GamePhase.PLAYING:
@@ -373,7 +415,6 @@ func play_selected_cards():
 		place_blank_on_grid()
 
 	selected_cards.clear()
-
 	hands_left -= 1
 
 	draw_to_hand()
@@ -384,118 +425,91 @@ func play_selected_cards():
 
 	check_grade_result()
 	update_stage_ui()
-	
-	
-func check_grade_result():
-	if total_score >= get_target_score():
-		complete_grade()
+
+
+func place_card_on_grid(card):
+	if current_row >= GRID_SIZE:
+		print("GRID FULL")
 		return
 
-	if hands_left <= 0:
-		fail_grade()	
-func complete_grade():
-	game_phase = GamePhase.SHOP
+	grid[current_row][current_col] = card["letter"]
+	advance_grid_cursor()
 
-	var reward = get_grade_reward()
-	money += reward
 
-	print("Passed ", get_current_school()["name"], " Grade ", get_current_grade_number())
-	print("Earned $", reward)
-
-	open_shop()
-
-func _on_next_grade_pressed():
-	if game_phase != GamePhase.SHOP:
+func place_blank_on_grid():
+	if current_row >= GRID_SIZE:
+		print("GRID FULL")
 		return
 
-	shop_panel.visible = false
-	advance_grade()
-func fail_grade():
-	game_phase = GamePhase.GAME_OVER
-	print("FAILED GRADE")
-	# later: show game over UI
-	
+	grid[current_row][current_col] = "_"
+	advance_grid_cursor()
 
-func open_shop():
-	shop_panel.visible = true
-	update_stage_ui()
-	print("SHOP OPEN")
-	advance_grade()
-func advance_grade():
-	grade_index += 1
 
-	if grade_index >= get_current_school()["grades"]:
-		grade_index = 0
-		school_index += 1
+func advance_grid_cursor():
+	current_col += 1
 
-		if school_index >= schools.size():
-			win_run()
-			return
+	if current_col >= GRID_SIZE:
+		current_col = 0
+		current_row += 1
 
-	start_grade()
-	
-func start_grade():
-	game_phase = GamePhase.PLAYING
 
-	total_score = 0
-	hands_left = HANDS_PER_GRADE
+# ------------------------------------------------------------
+# Grid
+# ------------------------------------------------------------
 
-	current_row = 0
-	current_col = 0
-	selected_cards.clear()
+func create_grid():
+	grid.clear()
+	letter_mults.clear()
 
-	create_grid()
-	update_grid_ui()
-	update_hand_ui()
-	update_stage_ui()
+	for y in range(GRID_SIZE):
+		var row = []
+		var mult_row = []
 
-	print("Starting ", get_current_school()["name"], " Grade ", get_current_grade_number())
-func start_next_grade():
-	total_score = 0
-	score_label.text = "Score: 0"
+		for x in range(GRID_SIZE):
+			row.append("_")
+			mult_row.append(0)
 
-	create_grid()
-	current_row = 0
-	current_col = 0
+		grid.append(row)
+		letter_mults.append(mult_row)
 
-	update_grid_ui()
-	update_stage_ui()
 
-	print("Now entering ", get_current_school()["name"], " Grade ", get_current_grade_number())
-func win_run():
-	game_phase = GamePhase.WIN
-	print("YOU GRADUATED")
 func get_horizontal_lines():
 	var lines = []
 
 	for y in range(GRID_SIZE):
 		var line = []
+
 		for x in range(GRID_SIZE):
 			line.append([y, x])
+
 		lines.append(line)
 
 	return lines
+
+
 func get_vertical_lines():
 	var lines = []
 
 	for x in range(GRID_SIZE):
 		var line = []
+
 		for y in range(GRID_SIZE):
 			line.append([y, x])
+
 		lines.append(line)
 
 	return lines
+
+
 func get_diagonal_lines():
 	var lines = []
 
-	# diagonals down-right
 	for start_x in range(GRID_SIZE):
 		lines.append(make_line(0, start_x, 1, 1))
 
 	for start_y in range(1, GRID_SIZE):
 		lines.append(make_line(start_y, 0, 1, 1))
 
-	# diagonals down-left
 	for start_x in range(GRID_SIZE):
 		lines.append(make_line(0, start_x, 1, -1))
 
@@ -503,6 +517,8 @@ func get_diagonal_lines():
 		lines.append(make_line(start_y, GRID_SIZE - 1, 1, -1))
 
 	return lines
+
+
 func make_line(start_y, start_x, dy, dx):
 	var line = []
 	var y = start_y
@@ -515,118 +531,115 @@ func make_line(start_y, start_x, dy, dx):
 
 	return line
 
-func place_card_on_grid(card):
-	
-	if current_row >= GRID_SIZE:
-		print("GRID FULL")
-		return
 
-	grid[current_row][current_col] = card["letter"]
+# ------------------------------------------------------------
+# Scoring
+# ------------------------------------------------------------
 
-	current_col += 1
+func score_grid():
+	var grade_score = 0
 
-	if current_col >= GRID_SIZE:
-		current_col = 0
-		current_row += 1
-		
-func place_blank_on_grid():
-	if current_row >= GRID_SIZE:
-		print("GRID FULL")
-		return
+	var horizontal_lines = get_horizontal_lines()
+	var vertical_lines = get_vertical_lines()
+	var diagonal_lines = get_diagonal_lines()
 
-	grid[current_row][current_col] = "_"
+	for length in range(3, GRID_SIZE + 1):
+		grade_score += await score_lines_by_length(horizontal_lines, length, "H")
 
-	current_col += 1
+	for length in range(3, GRID_SIZE + 1):
+		grade_score += await score_lines_by_length(vertical_lines, length, "V")
 
-	if current_col >= GRID_SIZE:
-		current_col = 0
-		current_row += 1
-		
-func update_hand_ui():
-	var hand_container = get_node("GameplayUI/HandContainer")
-	var selected_container = get_node("GameplayUI/SelectedContainer")
+	for length in range(3, GRID_SIZE + 1):
+		grade_score += await score_lines_by_length(diagonal_lines, length, "D")
 
-	for child in hand_container.get_children():
-		child.queue_free()
+	print("Grade score this hand: ", grade_score)
+	return grade_score
 
-	for child in selected_container.get_children():
-		child.queue_free()
 
-	# HAND
-	for card in hand:
-		if selected_cards.has(card):
+func score_lines_by_length(lines, length, direction):
+	var score = 0
+
+	for line in lines:
+		if line.size() < length:
 			continue
 
-		var scene = preload("res://Card.tscn")
-		var card_ui = scene.instantiate()
+		for start in range(0, line.size() - length + 1):
+			var combo = line.slice(start, start + length)
 
-		card_ui.setup(card, false)
+			if combo_has_blank(combo):
+				continue
 
-		card_ui.pressed.connect(_on_card_pressed.bind(card))
+			var word = combo_to_string(combo)
 
-		hand_container.add_child(card_ui)
+			if is_valid_combo(word):
+				var combo_score = score_combo(combo, direction, length)
+				score += combo_score
 
-	# PREVIEW ROW
-	for card in selected_cards:
-		var scene = preload("res://Card.tscn")
-		var card_ui = scene.instantiate()
+				print(word, " scored ", combo_score)
 
-		card_ui.setup(card, true)
+				await animate_combo(combo)
+				await show_combo_score(combo, combo_score)
 
-		# slightly smaller
-		card_ui.scale = Vector2(0.8, 0.8)
+	return score
 
-		# clicking removes from queue
-		card_ui.pressed.connect(_on_selected_card_pressed.bind(card))
 
-		selected_container.add_child(card_ui)
-func _on_selected_card_pressed(card):
-	selected_cards.erase(card)
-	update_hand_ui()
-func update_grid_ui():
-	reset_grid_visuals()
+func combo_has_blank(combo):
+	for pos in combo:
+		var y = pos[0]
+		var x = pos[1]
 
-	var grid_container = get_node("GameplayUI/GridContainer")
-	var i = 0
+		if grid[y][x] == "_":
+			return true
 
-	for y in range(GRID_SIZE):
-		for x in range(GRID_SIZE):
-			var cell = grid_container.get_child(i)
-			var label = cell.get_node("Label")
-			label.text = grid[y][x]
-			i += 1
+	return false
 
-var dictionary = {}
 
-func load_dictionary():
-	var file = FileAccess.open("res://enable1.txt", FileAccess.READ)
+func combo_to_string(combo):
+	var s = ""
 
-	while not file.eof_reached():
-		var word = file.get_line().strip_edges().to_lower()
+	for pos in combo:
+		var y = pos[0]
+		var x = pos[1]
+		s += grid[y][x]
 
-		if word != "":
-			dictionary[word] = true		
+	return s
+
+
+func score_combo(combo, direction, length):
+	var mult_sum = 1
+
+	for pos in combo:
+		var y = pos[0]
+		var x = pos[1]
+		mult_sum += letter_mults[y][x]
+
+	var upgrade_id = direction + str(length)
+	var effective_length = combo.size() + score_upgrades[upgrade_id]
+
+	var points = mult_sum * effective_length
+
+	for pos in combo:
+		var y = pos[0]
+		var x = pos[1]
+		letter_mults[y][x] += 1
+
+	return points
+
 func is_valid_combo(word: String) -> bool:
 	word = word.to_lower()
-
-	# reject empty cells / blanks
-	if word.contains("_"):
-		return false
-
-	if word.contains(" "):
-		return false
 
 	if word.length() < 3:
 		return false
 
-	if word.length() != 3 and word.strip_edges() == "":
+	if word.contains("_") or word.contains(" "):
 		return false
 
 	if dictionary.has(word):
 		return true
 
 	return all_same_letter(word)
-	
+
+
 func all_same_letter(word: String) -> bool:
 	if word.length() < 3:
 		return false
@@ -641,24 +654,71 @@ func all_same_letter(word: String) -> bool:
 			return false
 
 	return true
-func score_combo(combo):
-	var mult_sum = 1
 
-	for pos in combo:
-		var y = pos[0]
-		var x = pos[1]
-		mult_sum += letter_mults[y][x]
 
-	var points = mult_sum * combo.size()
+func load_dictionary():
+	var file = FileAccess.open("res://enable1.txt", FileAccess.READ)
 
-	for pos in combo:
-		var y = pos[0]
-		var x = pos[1]
-		letter_mults[y][x] += 1
+	if file == null:
+		push_error("Could not load dictionary at res://enable1.txt")
+		return
 
-	return points
+	while not file.eof_reached():
+		var word = file.get_line().strip_edges().to_lower()
+
+		if word != "":
+			dictionary[word] = true
+
+
+# ------------------------------------------------------------
+# UI
+# ------------------------------------------------------------
+
+func update_hand_ui():
+	for child in hand_container.get_children():
+		child.queue_free()
+
+	for child in selected_container.get_children():
+		child.queue_free()
+
+	for card in hand:
+		if selected_cards.has(card):
+			continue
+
+		var card_ui = CARD_SCENE.instantiate()
+		card_ui.setup(card, false)
+		card_ui.pressed.connect(_on_card_pressed.bind(card))
+		hand_container.add_child(card_ui)
+
+	for card in selected_cards:
+		var card_ui = CARD_SCENE.instantiate()
+		card_ui.setup(card, true)
+		card_ui.scale = Vector2(0.8, 0.8)
+		card_ui.pressed.connect(_on_selected_card_pressed.bind(card))
+		selected_container.add_child(card_ui)
+
+
+func update_grid_ui():
+	reset_grid_visuals()
+
+	var i = 0
+
+	for y in range(GRID_SIZE):
+		for x in range(GRID_SIZE):
+			var cell = grid_container.get_child(i)
+			var label = cell.get_node("Label")
+			label.text = grid[y][x]
+			i += 1
+
+
+func reset_grid_visuals():
+	for cell in grid_container.get_children():
+		var label = cell.get_node("Label")
+		label.position = Vector2.ZERO
+		label.rotation_degrees = 0
+
+
 func animate_combo(combo):
-	var grid_container = get_node("GameplayUI/GridContainer")
 	var tweens = []
 
 	for pos in combo:
@@ -672,6 +732,8 @@ func animate_combo(combo):
 
 	if tweens.size() > 0:
 		await tweens[0].finished
+
+
 func animate_cell(label):
 	label.position = Vector2.ZERO
 	label.rotation_degrees = 0
@@ -686,42 +748,110 @@ func animate_cell(label):
 	tween.tween_property(label, "position:y", 0, 0.12)
 
 	return tween
-func _on_card_pressed(card):
-	toggle_select(card)
-func reset_grid_visuals():
-	var grid_container = get_node("GameplayUI/GridContainer")
 
-	for cell in grid_container.get_children():
-		var label = cell.get_node("Label")
-		label.position = Vector2.ZERO
-		label.rotation_degrees = 0
+
+func show_combo_score(combo, combo_score):
+	var start_pos = Vector2.ZERO
+
+	for pos in combo:
+		var y = pos[0]
+		var x = pos[1]
+		var index = y * GRID_SIZE + x
+		var cell = grid_container.get_child(index)
+
+		start_pos += cell.global_position + cell.size / 2
+
+	start_pos /= combo.size()
+
+	var end_pos = score_label.global_position + score_label.size / 2
+
+	var floating_label = Label.new()
+	floating_label.text = "+" + str(combo_score)
+	floating_label.global_position = start_pos
+	floating_label.z_index = 100
+	floating_label.add_theme_font_size_override("font_size", 28)
+
+	add_child(floating_label)
+
+	var tween = create_tween()
+
+	tween.tween_property(floating_label, "scale", Vector2(1.3, 1.3), 0.08)
+	tween.tween_property(floating_label, "scale", Vector2(1.0, 1.0), 0.08)
+
+	tween.tween_property(floating_label, "global_position", end_pos, 0.35)
+
+	tween.parallel().tween_property(floating_label, "modulate:a", 0.0, 0.25)
+	tween.parallel().tween_property(floating_label, "scale", Vector2(0.4, 0.4), 0.25)
+
+	await tween.finished
+
+	floating_label.queue_free()
+
+	total_score += combo_score
+	score_label.text = "Score: " + str(total_score)
+
+	var bump = create_tween()
+	bump.tween_property(score_label, "scale", Vector2(1.2, 1.2), 0.08)
+	bump.tween_property(score_label, "scale", Vector2(1.0, 1.0), 0.08)
+
+
+# ------------------------------------------------------------
+# Save / load
+# ------------------------------------------------------------
+
 func save_game():
 	var data = {
 		"deck": deck,
 		"discard": discard,
 		"hand": hand,
+		"selected_cards": selected_cards,
 		"grid": grid,
+		"letter_mults": letter_mults,
 		"row": current_row,
-		"col": current_col
+		"col": current_col,
+		"total_score": total_score,
+		"money": money,
+		"hands_left": hands_left,
+		"school_index": school_index,
+		"grade_index": grade_index,
+		"game_phase": game_phase
 	}
 
 	var file = FileAccess.open("user://save.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(data))
+
 
 func load_game():
 	if !FileAccess.file_exists("user://save.json"):
 		return
 
 	var file = FileAccess.open("user://save.json", FileAccess.READ)
-
 	var json = JSON.parse_string(file.get_as_text())
+
+	if json == null:
+		return
 
 	deck = json["deck"]
 	discard = json["discard"]
 	hand = json["hand"]
+	selected_cards = json.get("selected_cards", [])
 	grid = json["grid"]
+	letter_mults = json.get("letter_mults", letter_mults)
+
 	current_row = json["row"]
 	current_col = json["col"]
 
+	total_score = json.get("total_score", 0)
+	money = json.get("money", 0)
+	hands_left = json.get("hands_left", HANDS_PER_GRADE)
+
+	school_index = json.get("school_index", 0)
+	grade_index = json.get("grade_index", 0)
+	game_phase = json.get("game_phase", GamePhase.PLAYING)
+
+	gameplay_ui.visible = game_phase == GamePhase.PLAYING
+	shop_panel.visible = game_phase == GamePhase.SHOP
+
 	update_hand_ui()
 	update_grid_ui()
+	update_stage_ui()
