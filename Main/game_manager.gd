@@ -1,16 +1,75 @@
 extends Node
+const HANDS_PER_GRADE = 5
 
+enum GamePhase {
+	PLAYING,
+	SHOP,
+	GAME_OVER,
+	WIN
+}
+
+var game_phase = GamePhase.PLAYING
+
+var money = 0
+var hands_left = HANDS_PER_GRADE
+
+var school_index = 0
+var grade_index = 0
+@onready var stage_label = get_node("GameplayUI/StageLabel")
+@onready var money_label = get_node("GameplayUI/MoneyLabel")
+@onready var target_label = get_node("GameplayUI/TargetLabel")
+@onready var hands_label = get_node("GameplayUI/HandsLabel")
+@onready var shop_panel = get_node("GameplayUI/ShopPanel")
+@onready var next_grade_button = get_node("GameplayUI/ShopPanel/NextGradeButton")
+
+var schools = [
+	{
+		"name": "Elementary School",
+		"grades": 5,
+		"base_target": 100,
+		"target_growth": 75,
+		"reward": 5
+	},
+	{
+		"name": "Middle School",
+		"grades": 4,
+		"base_target": 350,
+		"target_growth": 125,
+		"reward": 8
+	},
+	{
+		"name": "High School",
+		"grades": 3,
+		"base_target": 750,
+		"target_growth": 200,
+		"reward": 12
+	}
+]
+
+
+
+func get_current_target_score():
+	var school = get_current_school()
+	return school["base_target"] + grade_index * 100
+
+
+func get_current_reward():
+	var school = get_current_school()
+	return school["reward"] + grade_index
+func check_grade_complete():
+	if total_score >= get_current_target_score():
+		complete_grade()
 const HAND_SIZE = 10
 const MAX_PLAY = 5
 const GRID_SIZE = 5
 var total_score = 0
-@onready var score_label = get_node("VBoxContainer/ScoreLabel")
+@onready var score_label = get_node("GameplayUI/ScoreLabel")
 var deck = []
 var discard = []
 var letter_mults = [] # same shape as grid
 var hand = []
 var selected_cards = []
-
+var current_grade_modifier = null
 var grid = []
 
 var current_row = 0
@@ -19,10 +78,36 @@ var current_col = 0
 func _ready():
 	load_dictionary()
 	create_starting_deck()
-	print('h')
 	create_grid()
 	draw_to_hand()
+	update_stage_ui()
+	shop_panel.visible = false
+	next_grade_button.pressed.connect(_on_next_grade_pressed)
+func get_current_school():
+	return schools[school_index]
 
+
+func get_current_grade_number():
+	return grade_index + 1
+
+
+func get_target_score():
+	var school = get_current_school()
+	return school["base_target"] + grade_index * school["target_growth"]
+
+
+func get_grade_reward():
+	var school = get_current_school()
+	return school["reward"] + grade_index
+
+
+func update_stage_ui():
+	stage_label.text = get_current_school()["name"] + " - Grade " + str(get_current_grade_number())
+	money_label.text = "$" + str(money)
+	target_label.text = "Target: " + str(get_target_score())
+	hands_label.text = "Hands: " + str(hands_left)
+	score_label.text = "Score: " + str(total_score)
+	
 func create_starting_deck():
 	deck.clear()
 
@@ -172,7 +257,7 @@ func score_line(line):
 
 	return score
 func show_combo_score(combo, combo_score):
-	var grid_container = get_node("VBoxContainer/GridContainer")
+	var grid_container = get_node("GameplayUI/GridContainer")
 
 	var start_pos = Vector2.ZERO
 
@@ -268,7 +353,13 @@ func toggle_select(card):
 	update_hand_ui()
 
 func play_selected_cards():
+	if game_phase != GamePhase.PLAYING:
+		return
+
 	if selected_cards.is_empty():
+		return
+
+	if hands_left <= 0:
 		return
 
 	var played_count = selected_cards.size()
@@ -283,10 +374,97 @@ func play_selected_cards():
 
 	selected_cards.clear()
 
+	hands_left -= 1
+
 	draw_to_hand()
 	update_grid_ui()
+	update_stage_ui()
 
 	await score_grid()
+
+	check_grade_result()
+	update_stage_ui()
+	
+	
+func check_grade_result():
+	if total_score >= get_target_score():
+		complete_grade()
+		return
+
+	if hands_left <= 0:
+		fail_grade()	
+func complete_grade():
+	game_phase = GamePhase.SHOP
+
+	var reward = get_grade_reward()
+	money += reward
+
+	print("Passed ", get_current_school()["name"], " Grade ", get_current_grade_number())
+	print("Earned $", reward)
+
+	open_shop()
+
+func _on_next_grade_pressed():
+	if game_phase != GamePhase.SHOP:
+		return
+
+	shop_panel.visible = false
+	advance_grade()
+func fail_grade():
+	game_phase = GamePhase.GAME_OVER
+	print("FAILED GRADE")
+	# later: show game over UI
+	
+
+func open_shop():
+	shop_panel.visible = true
+	update_stage_ui()
+	print("SHOP OPEN")
+	advance_grade()
+func advance_grade():
+	grade_index += 1
+
+	if grade_index >= get_current_school()["grades"]:
+		grade_index = 0
+		school_index += 1
+
+		if school_index >= schools.size():
+			win_run()
+			return
+
+	start_grade()
+	
+func start_grade():
+	game_phase = GamePhase.PLAYING
+
+	total_score = 0
+	hands_left = HANDS_PER_GRADE
+
+	current_row = 0
+	current_col = 0
+	selected_cards.clear()
+
+	create_grid()
+	update_grid_ui()
+	update_hand_ui()
+	update_stage_ui()
+
+	print("Starting ", get_current_school()["name"], " Grade ", get_current_grade_number())
+func start_next_grade():
+	total_score = 0
+	score_label.text = "Score: 0"
+
+	create_grid()
+	current_row = 0
+	current_col = 0
+
+	update_grid_ui()
+	update_stage_ui()
+
+	print("Now entering ", get_current_school()["name"], " Grade ", get_current_grade_number())
+func win_run():
+	game_phase = GamePhase.WIN
+	print("YOU GRADUATED")
 func get_horizontal_lines():
 	var lines = []
 
@@ -365,8 +543,8 @@ func place_blank_on_grid():
 		current_row += 1
 		
 func update_hand_ui():
-	var hand_container = get_node("VBoxContainer/HandContainer")
-	var selected_container = get_node("VBoxContainer/SelectedContainer")
+	var hand_container = get_node("GameplayUI/HandContainer")
+	var selected_container = get_node("GameplayUI/SelectedContainer")
 
 	for child in hand_container.get_children():
 		child.queue_free()
@@ -408,7 +586,7 @@ func _on_selected_card_pressed(card):
 func update_grid_ui():
 	reset_grid_visuals()
 
-	var grid_container = get_node("VBoxContainer/GridContainer")
+	var grid_container = get_node("GameplayUI/GridContainer")
 	var i = 0
 
 	for y in range(GRID_SIZE):
@@ -480,7 +658,7 @@ func score_combo(combo):
 
 	return points
 func animate_combo(combo):
-	var grid_container = get_node("VBoxContainer/GridContainer")
+	var grid_container = get_node("GameplayUI/GridContainer")
 	var tweens = []
 
 	for pos in combo:
@@ -511,7 +689,7 @@ func animate_cell(label):
 func _on_card_pressed(card):
 	toggle_select(card)
 func reset_grid_visuals():
-	var grid_container = get_node("VBoxContainer/GridContainer")
+	var grid_container = get_node("GameplayUI/GridContainer")
 
 	for cell in grid_container.get_children():
 		var label = cell.get_node("Label")
