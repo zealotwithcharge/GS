@@ -1,7 +1,7 @@
 extends Node
 
-const HAND_SIZE := 10
-const MAX_PLAY := 5
+const HAND_SIZE := 9
+const MAX_PLAY := 9
 const GRID_SIZE := 5
 const HANDS_PER_GRADE := 5
 const CARD_SCENE := preload("res://Card.tscn")
@@ -9,7 +9,7 @@ const CARD_SCENE := preload("res://Card.tscn")
 var owned_permanents = []
 var shop_permanent_items = []
 var shop_consumable_items = []
-
+var preview_offset = 0
 var score_upgrades = {
 	"H3": 0, "H4": 0, "H5": 0,
 	"V3": 0, "V4": 0, "V5": 0,
@@ -39,7 +39,9 @@ var consumable_pool = [
 ]
 @onready var perma_shop = $RootUI/ShopPanel/PermaShop
 @onready var consume_shop = $RootUI/ShopPanel/ConsumeShop
-
+var dragging_preview_index = -1
+var drag_start_mouse_pos = Vector2.ZERO
+var is_dragging_preview_card = false
 enum GamePhase {
 	PLAYING,
 	SHOP,
@@ -55,7 +57,10 @@ var total_score := 0
 
 var school_index := 0
 var grade_index := 0
-
+const MAX_SELECTED_CARDS = 9
+const GRID_PLACE_SIZE = 5
+const PREVIEW_SLOT_COUNT = 2 * HAND_SIZE - GRID_PLACE_SIZE # 13
+var active_window_start = 0
 var deck := []
 var discard := []
 var hand := []
@@ -68,7 +73,7 @@ var current_row := 0
 var current_col := 0
 
 var dictionary := {}
-
+var drag_ghost = null
 var schools := [
 	{
 		"name": "Elementary School",
@@ -96,34 +101,164 @@ var schools := [
 @onready var top_bar = $RootUI/TopBar
 @onready var gameplay_ui = $RootUI/GameplayUI
 @onready var shop_panel = $RootUI/ShopPanel
-
+var is_paused = false
 @onready var stage_label = $RootUI/TopBar/StageLabel
 @onready var money_label = $RootUI/TopBar/MoneyLabel
 @onready var target_label = $RootUI/TopBar/TargetLabel
 @onready var hands_label = $RootUI/TopBar/HandsLabel
-
+@onready var pause_menu = $PauseMenu
+@onready var upgrade_viewer = $PauseMenu/PausePanel/VBoxContainer/UpgradeViewer
+@onready var upgrade_list = $PauseMenu/PausePanel/VBoxContainer/UpgradeViewer/UpgradeList
+@onready var resume_button = $PauseMenu/PausePanel/VBoxContainer/ResumeButton
 @onready var score_label = $RootUI/GameplayUI/ScoreLabel
 @onready var grid_container = $RootUI/GameplayUI/GridContainer
-@onready var selected_container = $RootUI/GameplayUI/SelectedContainer
+@onready var selected_container = $RootUI/GameplayUI/SelectedRowControls/SelectedContainer
+@onready var shift_left_button = $RootUI/GameplayUI/SelectedRowControls/ShiftLeftButton
+@onready var shift_right_button = $RootUI/GameplayUI/SelectedRowControls/ShiftRightButton
 @onready var hand_container = $RootUI/GameplayUI/HandContainer
 
 @onready var next_grade_button = $RootUI/ShopPanel/NextGradeButton
+func _on_preview_card_gui_input(event, card_index):
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			dragging_preview_index = card_index
+			drag_start_mouse_pos = get_viewport().get_mouse_position()
+			is_dragging_preview_card = false
+		else:
+			if dragging_preview_index != -1:
+				var target_index = get_preview_card_index_under_mouse()
 
+				if is_dragging_preview_card and target_index != -1 and target_index != dragging_preview_index:
+					swap_selected_cards(dragging_preview_index, target_index)
+				elif !is_dragging_preview_card:
+					var card = selected_cards[card_index]
+					_on_selected_card_pressed(card)
+			clear_drag_ghost()
+			dragging_preview_index = -1
+			is_dragging_preview_card = false
+
+	if event is InputEventMouseMotion and dragging_preview_index != -1:
+		var mouse_pos = get_viewport().get_mouse_position()
+
+		if mouse_pos.distance_to(drag_start_mouse_pos) > 8:
+			if !is_dragging_preview_card:
+				is_dragging_preview_card = true
+				create_drag_ghost(selected_cards[dragging_preview_index])
+
+		update_drag_ghost()
+func create_drag_ghost(card):
+	clear_drag_ghost()
+
+	var scene = preload("res://Card.tscn")
+	drag_ghost = scene.instantiate()
+	drag_ghost.setup(card, false)
+	drag_ghost.modulate = Color(1, 1, 1, 0.65)
+	drag_ghost.scale = Vector2(0.75, 0.75)
+	drag_ghost.z_index = 999
+	drag_ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	get_tree().current_scene.add_child(drag_ghost)
+	update_drag_ghost()
+func update_drag_ghost():
+	if drag_ghost == null:
+		return
+
+	var mouse_pos = get_viewport().get_mouse_position()
+	drag_ghost.global_position = mouse_pos - drag_ghost.size * drag_ghost.scale / 2
+func clear_drag_ghost():
+	if drag_ghost != null:
+		drag_ghost.queue_free()
+		drag_ghost = null
+func get_preview_card_index_under_mouse():
+	var mouse_pos = get_viewport().get_mouse_position()
+
+	for slot in selected_container.get_children():
+		if slot.get_child_count() == 0:
+			continue
+
+		var inner = slot.get_child(0)
+
+		if inner.get_child_count() == 0:
+			continue
+
+		var card_ui = inner.get_child(0)
+		var rect = Rect2(card_ui.global_position, card_ui.size * card_ui.scale)
+
+		if rect.has_point(mouse_pos):
+			return card_ui.get_meta("selected_index")
+
+	return -1
+func swap_selected_cards(a, b):
+	if a < 0 or b < 0:
+		return
+
+	if a >= selected_cards.size() or b >= selected_cards.size():
+		return
+
+	var temp = selected_cards[a]
+	selected_cards[a] = selected_cards[b]
+	selected_cards[b] = temp
+
+	update_hand_ui()
+func _input(event):
+	if event.is_action_pressed("ui_cancel"):
+		toggle_pause_menu()
+func toggle_pause_menu():
+	if game_phase == GamePhase.GAME_OVER or game_phase == GamePhase.WIN:
+		return
+
+	is_paused = !is_paused
+	pause_menu.visible = is_paused
+
+	if is_paused:
+		update_upgrade_viewer()
+func _on_resume_pressed():
+	pause_menu.visible = false
+func update_upgrade_viewer():
+	for child in upgrade_list.get_children():
+		child.queue_free()
+
+
+
+	var ids = ["H3", "H4", "H5", "V3", "V4", "V5", "D3", "D4", "D5"]
+
+	for id in ids:
+		var upgrade = score_upgrades[id]
+		var pattern_len = int(id.substr(1, 1))
+		var effective_len = pattern_len + upgrade
+
+		var label = Label.new()
+
+		if upgrade > 0:
+			label.text = id + ": (Σ Mult + 1) × " + str(effective_len) + "   [+" + str(upgrade) + "]"
+		else:
+			label.text = id + ": (Σ Mult + 1) × " + str(pattern_len)
+
+		upgrade_list.add_child(label)
 func _ready():
 	load_dictionary()
 	create_starting_deck()
 	create_grid()
-
+	pause_menu.visible = false
+	resume_button.pressed.connect(_on_resume_pressed)
 	shop_panel.visible = false
 	gameplay_ui.visible = true
 
 	next_grade_button.pressed.connect(_on_next_grade_pressed)
+	preview_offset = get_active_window_start()
 
+	shift_left_button.pressed.connect(_on_shift_left_pressed)
+	shift_right_button.pressed.connect(_on_shift_right_pressed)
 	draw_to_hand()
 	update_grid_ui()
 	update_stage_ui()
 
+func _on_shift_left_pressed():
+	shift_preview_left()
 
+
+func _on_shift_right_pressed():
+	shift_preview_right()
 # ------------------------------------------------------------
 # Stage / economy
 # ------------------------------------------------------------
@@ -244,7 +379,7 @@ func update_owned_permanent_ui():
 		permanent_item_bar.add_child(label)
 func _on_consumable_item_pressed(item, button):
 	if money < item["cost"]:
-		print("Not enough money")
+		await animate_cant_afford(button)
 		return
 
 	money -= item["cost"]
@@ -252,11 +387,36 @@ func _on_consumable_item_pressed(item, button):
 	var id = item["id"]
 	score_upgrades[id] += 1
 
+	update_stage_ui()
+	update_upgrade_viewer()
+
+	await animate_shop_purchase(button)
+
 	button.disabled = true
 	button.text = item["name"] + " - BOUGHT"
+func animate_shop_purchase(button):
+	var original_scale = button.scale
+	var original_modulate = button.modulate
 
-	update_stage_ui()
-	print("Bought consumable: ", item["name"])
+	var tween = create_tween()
+	tween.tween_property(button, "scale", original_scale * 1.15, 0.08)
+	tween.tween_property(button, "scale", original_scale, 0.08)
+	tween.parallel().tween_property(button, "modulate:a", 0.45, 0.15)
+
+	await tween.finished
+
+	button.modulate = original_modulate
+func animate_cant_afford(button):
+	var original_pos = button.position
+
+	var tween = create_tween()
+	tween.tween_property(button, "position:x", original_pos.x - 8, 0.04)
+	tween.tween_property(button, "position:x", original_pos.x + 8, 0.04)
+	tween.tween_property(button, "position:x", original_pos.x - 5, 0.04)
+	tween.tween_property(button, "position:x", original_pos.x + 5, 0.04)
+	tween.tween_property(button, "position:x", original_pos.x, 0.04)
+
+	await tween.finished
 func make_shop_button(item):
 	var button = Button.new()
 	button.text = item["name"] + " - $" + str(item["cost"])
@@ -298,12 +458,27 @@ func start_grade():
 	current_row = 0
 	current_col = 0
 	selected_cards.clear()
+	preview_offset = get_active_window_start()
 
 	create_grid()
 	update_grid_ui()
 	update_hand_ui()
 	update_stage_ui()
+func shift_preview_left():
+	if selected_cards.is_empty():
+		return
 
+	preview_offset = max(0, preview_offset - 1)
+	update_hand_ui()
+
+
+func shift_preview_right():
+	if selected_cards.is_empty():
+		return
+
+	var max_offset = PREVIEW_SLOT_COUNT - selected_cards.size()
+	preview_offset = min(max_offset, preview_offset + 1)
+	update_hand_ui()
 func win_run():
 	game_phase = GamePhase.WIN
 	gameplay_ui.visible = false
@@ -375,25 +550,96 @@ func toggle_select(card):
 	if selected_cards.has(card):
 		selected_cards.erase(card)
 	else:
-		if selected_cards.size() < MAX_PLAY:
+		if selected_cards.size() < MAX_SELECTED_CARDS:
 			selected_cards.append(card)
 
+	auto_center_preview()
 	update_hand_ui()
+func auto_center_preview():
+	var active_start = get_active_window_start()
 
+	if selected_cards.size() <= GRID_PLACE_SIZE:
+		preview_offset = active_start
+	else:
+		preview_offset = active_start - (selected_cards.size() - GRID_PLACE_SIZE)
 
+	preview_offset = clamp(preview_offset, 0, PREVIEW_SLOT_COUNT - selected_cards.size())
+	
+	
+	
+func get_active_window_start():
+	return int((PREVIEW_SLOT_COUNT - GRID_PLACE_SIZE) / 2)
+	
+	
+func get_cards_to_place():
+	var active_start = get_active_window_start()
+	var cards = []
+
+	for slot_index in range(active_start, active_start + GRID_PLACE_SIZE):
+		var card_index = slot_index - preview_offset
+
+		if card_index >= 0 and card_index < selected_cards.size():
+			cards.append(selected_cards[card_index])
+
+	return cards
 func _on_card_pressed(card):
 	toggle_select(card)
 
 
 func _on_selected_card_pressed(card):
 	selected_cards.erase(card)
+	auto_center_preview()
 	update_hand_ui()
-
 
 # ------------------------------------------------------------
 # Play hand
 # ------------------------------------------------------------
+func score_long_word_bonus():
+	var word = get_selected_word()
+	var length = word.length()
 
+	if length <= GRID_PLACE_SIZE:
+		return
+
+	if !dictionary.has(word.to_lower()):
+		return
+
+	var bonus = (length - GRID_PLACE_SIZE) * length
+
+	await show_long_word_score(word, bonus)
+
+	total_score += bonus
+	score_label.text = "Score: " + str(total_score)
+func show_long_word_score(word, bonus):
+	var label = Label.new()
+	label.text = word + "\nLONG WORD +" + str(bonus)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 32)
+	label.z_index = 999
+
+	get_tree().current_scene.add_child(label)
+
+	var viewport_size = get_viewport().get_visible_rect().size
+	label.global_position = viewport_size / 2 - Vector2(120, 40)
+	label.scale = Vector2(0.4, 0.4)
+	label.modulate.a = 0.0
+
+	var tween = create_tween()
+	tween.tween_property(label, "modulate:a", 1.0, 0.12)
+	tween.parallel().tween_property(label, "scale", Vector2(1.2, 1.2), 0.18)
+	tween.tween_property(label, "scale", Vector2(1.0, 1.0), 0.08)
+	tween.tween_interval(0.35)
+	tween.tween_property(label, "global_position", score_label.global_position + score_label.size / 2, 0.35)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.25)
+	tween.parallel().tween_property(label, "scale", Vector2(0.3, 0.3), 0.25)
+
+	await tween.finished
+
+	label.queue_free()
+
+	var bump = create_tween()
+	bump.tween_property(score_label, "scale", Vector2(1.25, 1.25), 0.08)
+	bump.tween_property(score_label, "scale", Vector2(1.0, 1.0), 0.08)
 func play_selected_cards():
 	if game_phase != GamePhase.PLAYING:
 		return
@@ -404,17 +650,27 @@ func play_selected_cards():
 	if hands_left <= 0:
 		return
 
-	var played_count = selected_cards.size()
+	if !can_play_selected_cards():
+		print("Invalid long word")
+		return
+	if selected_cards.size() > GRID_PLACE_SIZE:
+		await score_long_word_bonus()
+	var cards_to_place = get_cards_to_place()
+	var played_count = cards_to_place.size()
+
+	for card in cards_to_place:
+		place_card_on_grid(card)
+
+	for i in range(GRID_PLACE_SIZE - played_count):
+		place_blank_on_grid()
 
 	for card in selected_cards:
-		place_card_on_grid(card)
 		hand.erase(card)
 		discard.append(card)
 
-	for i in range(MAX_PLAY - played_count):
-		place_blank_on_grid()
-
 	selected_cards.clear()
+	preview_offset = get_active_window_start()
+
 	hands_left -= 1
 
 	draw_to_hand()
@@ -425,8 +681,22 @@ func play_selected_cards():
 
 	check_grade_result()
 	update_stage_ui()
+	
+func get_selected_word():
+	var s = ""
+	for card in selected_cards:
+		s += card["letter"]
+	return s
+func can_play_selected_cards():
+	if selected_cards.is_empty():
+		return false
 
+	var word = get_selected_word().to_lower()
 
+	if selected_cards.size() > GRID_PLACE_SIZE:
+		return dictionary.has(word)
+
+	return true
 func place_card_on_grid(card):
 	if current_row >= GRID_SIZE:
 		print("GRID FULL")
@@ -685,18 +955,78 @@ func update_hand_ui():
 		if selected_cards.has(card):
 			continue
 
-		var card_ui = CARD_SCENE.instantiate()
+		var scene = preload("res://Card.tscn")
+		var card_ui = scene.instantiate()
+
 		card_ui.setup(card, false)
+
 		card_ui.pressed.connect(_on_card_pressed.bind(card))
+
 		hand_container.add_child(card_ui)
 
-	for card in selected_cards:
-		var card_ui = CARD_SCENE.instantiate()
-		card_ui.setup(card, true)
-		card_ui.scale = Vector2(0.8, 0.8)
-		card_ui.pressed.connect(_on_selected_card_pressed.bind(card))
-		selected_container.add_child(card_ui)
+	update_selected_preview_ui()
 
+func update_selected_preview_ui():
+	for child in selected_container.get_children():
+		child.queue_free()
+
+	var active_start = get_active_window_start()
+	var active_end = active_start + min(GRID_PLACE_SIZE, selected_cards.size())
+
+	for i in range(PREVIEW_SLOT_COUNT):
+		var slot = PanelContainer.new()
+		slot.custom_minimum_size = Vector2(72, 96)
+
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(1, 1, 1, 0.04)
+		style.border_width_left = 1
+		style.border_width_top = 1
+		style.border_width_right = 1
+		style.border_width_bottom = 1
+		style.border_color = Color(1, 1, 1, 0.18)
+		style.corner_radius_top_left = 8
+		style.corner_radius_top_right = 8
+		style.corner_radius_bottom_left = 8
+		style.corner_radius_bottom_right = 8
+
+		var is_active_slot = i >= active_start and i < active_start + GRID_PLACE_SIZE
+
+		if is_active_slot:
+			style.bg_color = Color(1, 1, 0.85, 0.12)
+			style.border_width_left = 3
+			style.border_width_top = 3
+			style.border_width_right = 3
+			style.border_width_bottom = 3
+			style.border_color = Color(0.9, 0.82, 0.45, 0.75)
+
+		slot.add_theme_stylebox_override("panel", style)
+
+		var inner = CenterContainer.new()
+		slot.add_child(inner)
+
+		var card_index = i - preview_offset
+
+		if card_index >= 0 and card_index < selected_cards.size():
+			var card = selected_cards[card_index]
+			var scene = preload("res://Card.tscn")
+			var card_ui = scene.instantiate()
+			if dragging_preview_index == card_index and is_dragging_preview_card:
+				card_ui.modulate = Color(1, 1, 1, 0.2)
+
+			card_ui.setup(card, false)
+			card_ui.scale = Vector2(0.75, 0.75)
+			card_ui.set_meta("selected_index", card_index)
+
+			card_ui.gui_input.connect(_on_preview_card_gui_input.bind(card_index))
+
+			if !is_active_slot:
+				card_ui.modulate = Color(1, 1, 1, 0.45)
+
+			card_ui.pressed.connect(_on_selected_card_pressed.bind(card))
+
+			inner.add_child(card_ui)
+
+		selected_container.add_child(slot)
 
 func update_grid_ui():
 	reset_grid_visuals()
