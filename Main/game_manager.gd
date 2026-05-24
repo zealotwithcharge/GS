@@ -83,6 +83,7 @@ var dictionary := {}
 
 var owned_permanents := []
 var owned_stickers := []
+var teacher_stickers := []
 
 var shop_permanent_items := []
 var shop_consumable_items := []
@@ -262,6 +263,7 @@ func check_grade_result():
 
 
 func complete_grade():
+	clear_teacher_modifiers()
 	game_phase = GamePhase.SHOP
 
 	var reward = get_grade_reward()
@@ -288,6 +290,7 @@ func win_run():
 func advance_grade():
 	grade_index += 1
 	reset_grade_stickers()
+	#apply_teacher_modifiers()
 
 	if grade_index >= get_current_school()["grades"]:
 		grade_index = 0
@@ -829,7 +832,7 @@ func place_card_on_grid(card):
 
 	var letter_state = LetterState.new(card["letter"])
 
-	for sticker in owned_stickers:
+	for sticker in get_active_stickers():
 		sticker.modify_letter(letter_state)
 
 	grid[current_row][current_col] = letter_state
@@ -874,7 +877,7 @@ func reset_letters_after_hand():
 
 
 func should_reset_letter_mult_after_hand(letter_state):
-	for sticker in owned_stickers:
+	for sticker in get_active_stickers():
 		if sticker.prevents_hand_reset(letter_state):
 			return false
 
@@ -999,7 +1002,7 @@ func score_lines_by_length(lines, length, direction):
 func score_combo(combo, pattern_id):
 	var data = build_score_data(combo, pattern_id)
 
-	for sticker in owned_stickers:
+	for sticker in get_active_stickers():
 		data = sticker.modify_score_data(data)
 
 	var final_score = calculate_score_from_data(data)
@@ -1121,6 +1124,20 @@ func load_dictionary():
 		if word != "":
 			dictionary[word] = true
 
+func get_active_stickers() -> Array:
+	return owned_stickers + teacher_stickers
+
+func apply_teacher_modifiers(teacher):
+	teacher_stickers.clear()
+
+	for sticker in teacher.get_stickers():
+		teacher_stickers.append(sticker)
+		
+func clear_teacher_modifiers():
+	for sticker in teacher_stickers:
+		sticker.reset()
+
+	teacher_stickers.clear()
 
 # ============================================================
 # UI Rendering
