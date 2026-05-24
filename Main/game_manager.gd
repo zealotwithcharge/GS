@@ -325,7 +325,7 @@ func start_grade():
 
 func reset_grade_stickers():
 	for sticker in owned_stickers:
-		if sticker.reset_on_grade:
+		if sticker.resets_each_grade:
 			sticker.reset()
 
 
@@ -450,15 +450,17 @@ func create_starting_deck():
 
 	var letters = [
 		"A", "A", "A", "A",
-		"E", "E", "E", "E",
+		"I", "I", "I", "I", 
+		"E", "E", "E", "E", "E", "E",
 		"R", "R", "R",
 		"T", "T", "T",
-		"O", "O", "O",
-		"N", "N",
-		"S", "S",
+		"O", "O", "O", "O",
+		"N", "N", "N",
+		"S", "S","S",
 		"L", "L",
 		"D", "D",
-		"G", "M", "P", "B", "C", "F"
+		"U", "U",
+		"G", "M", "P", "B", "C", "F","H","J","K","Q","V","W","X","Y","Z",
 	]
 
 	var uid = 0
