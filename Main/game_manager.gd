@@ -31,6 +31,8 @@ enum HandViewMode {
 	CIRCLE
 }
 
+var teacher_order := []
+var current_teacher = null
 var hand_view_mode := HandViewMode.CIRCLE
 
 # ============================================================
@@ -152,11 +154,24 @@ var score_upgrades := {
 	"D3": 0, "D4": 0, "D5": 0
 }
 
+var teacher_pool := [
+	{
+		"name": "Ms. Vowels",
+		"description": "Vowels grow faster this grade.",
+		"stickers": [VowelLoverSticker]
+	},
+	{
+		"name": "Mr. Plain",
+		"description": "No modifier this grade.",
+		"stickers": []
+	}
+]
+
 var schools := [
 	{
 		"name": "Elementary School",
 		"grades": 5,
-		"base_target": 500,
+		"base_target": 50,
 		"target_growth": 75,
 		"reward": 5
 	},
@@ -176,14 +191,16 @@ var schools := [
 	}
 ]
 
-var permanent_pool := [
-	{"name": "Gold Star", "cost": 6, "description": "Nothing. You rule."},
-	{"name": "Pencil Case", "cost": 7, "description": "Placeholder permanent item."},
-	{"name": "Eraser", "cost": 8, "description": "Placeholder permanent item."},
-	{"name": "Hall Pass", "cost": 9, "description": "Placeholder permanent item."},
-	{"name": "Detention Slip", "cost": 10, "description": "Placeholder permanent item."}
+var sticker_pool := [
+	{
+		"id": "vowel_lover",
+		"name": "Vowel Lover",
+		"cost": 8,
+		"description": "Double the growth of vowels.",
+		"sticker": VowelLoverSticker
+	}
 ]
-
+var shop_sticker_items := []
 var consumable_pool := [
 	{"id": "H3", "name": "H3", "cost": 6, "direction": "H", "length": 3, "description": "Horizontal 3-letter words score as if they were 1 letter longer."},
 	{"id": "H4", "name": "H4", "cost": 5, "direction": "H", "length": 4, "description": "Horizontal 4-letter words score as if they were 1 letter longer."},
@@ -206,7 +223,7 @@ var consumable_pool := [
 func _ready():
 	load_dictionary()
 	create_grid()
-
+	create_teacher_order()
 	pause_menu.visible = false
 	shop_panel.visible = false
 	gameplay_ui.visible = true
@@ -224,13 +241,10 @@ func _ready():
 	discard_button.pressed.connect(discard_selected_cards)
 	linear_hand_container.custom_minimum_size = Vector2(760, 120)
 	circle_hand_container.custom_minimum_size = Vector2(360, 360)
-	circle_hand_container.visible = false
-	# Temporary test sticker.
-	owned_stickers.append(VowelLoverSticker.new())
 
-	draw_to_hand()
-	update_grid_ui()
-	update_stage_ui()
+
+
+	start_grade()
 	await get_tree().process_frame
 	update_hand_ui()
 
@@ -289,7 +303,14 @@ func get_current_school():
 func get_current_grade_number():
 	return grade_index + 1
 
+func create_teacher_order():
+	teacher_order.clear()
 
+	for teacher in teacher_pool:
+		teacher_order.append(teacher)
+
+	teacher_order.shuffle()
+	
 func get_target_score():
 	var school = get_current_school()
 	return school["base_target"] + grade_index * school["target_growth"]
@@ -301,11 +322,18 @@ func get_grade_reward():
 
 
 func update_stage_ui():
-	stage_label.text = get_current_school()["name"] + " - Grade " + str(get_current_grade_number())
+	var teacher_text := ""
+
+	if current_teacher != null:
+		teacher_text = " | Teacher: " + current_teacher["name"]
+
+	stage_label.text = get_current_school()["name"] + " - Grade " + str(get_current_grade_number()) + teacher_text
 	money_label.text = "$" + str(money)
 	target_label.text = "Target: " + str(get_target_score())
 	hands_label.text = "Hands: " + str(hands_left) + " | Discards: " + str(discards_left)
 	score_label.text = "Score: " + str(total_score)
+	
+	hands_label.text = "Hands: " + str(hands_left) + " | Discards: " + str(discards_left) 
 
 
 func check_grade_result():
@@ -370,14 +398,30 @@ func start_grade():
 	current_col = 0
 
 	selected_cards.clear()
+	locked_cards.clear()
 	preview_offset = get_active_window_start()
 
 	create_grid()
+	apply_teacher_for_current_grade()
+
+	draw_to_hand()
 	update_grid_ui()
 	update_hand_ui()
 	update_stage_ui()
+	
+func apply_teacher_for_current_grade():
+	clear_teacher_modifiers()
 
+	if teacher_order.is_empty():
+		create_teacher_order()
 
+	var teacher_index = grade_index % teacher_order.size()
+	current_teacher = teacher_order[teacher_index]
+
+	for sticker_class in current_teacher["stickers"]:
+		teacher_stickers.append(sticker_class.new())
+
+	print("Teacher: ", current_teacher["name"])
 func reset_grade_stickers():
 	for sticker in owned_stickers:
 		if sticker.resets_each_grade:
@@ -401,20 +445,63 @@ func generate_shop():
 	clear_container(perma_shop)
 	clear_container(consume_shop)
 
-	shop_permanent_items = get_random_items(permanent_pool, 3)
+	shop_sticker_items = get_available_shop_stickers(3)
 	shop_consumable_items = get_random_items(consumable_pool, 4)
 
-	for item in shop_permanent_items:
+	for item in shop_sticker_items:
 		var button = make_shop_button(item)
-		button.pressed.connect(_on_permanent_item_pressed.bind(item, button))
+		button.pressed.connect(_on_sticker_item_pressed.bind(item, button))
 		perma_shop.add_child(button)
 
 	for item in shop_consumable_items:
 		var button = make_shop_button(item)
 		button.pressed.connect(_on_consumable_item_pressed.bind(item, button))
 		consume_shop.add_child(button)
+		
+func _on_sticker_item_pressed(item, button):
+	if money < item["cost"]:
+		await animate_cant_afford(button)
+		return
 
+	if has_owned_sticker_id(item["id"]):
+		button.disabled = true
+		return
 
+	money -= item["cost"]
+
+	var sticker = item["sticker"].new()
+	owned_stickers.append(sticker)
+
+	update_stage_ui()
+
+	await animate_shop_purchase(button)
+
+	button.disabled = true
+	button.text = item["name"] + " - BOUGHT"
+
+	print("Bought sticker: ", item["name"])
+func get_available_shop_stickers(count: int) -> Array:
+	var available := []
+
+	for item in sticker_pool:
+		if !has_owned_sticker_id(item["id"]):
+			available.append(item)
+
+	available.shuffle()
+
+	var result := []
+
+	for i in range(min(count, available.size())):
+		result.append(available[i])
+
+	return result
+	
+func has_owned_sticker_id(id: String) -> bool:
+	for sticker in owned_stickers:
+		if sticker.sticker_id == id:
+			return true
+
+	return false
 func clear_container(container):
 	for child in container.get_children():
 		child.queue_free()
