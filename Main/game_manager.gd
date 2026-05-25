@@ -26,7 +26,12 @@ enum GamePhase {
 	GAME_OVER,
 	WIN
 }
+enum HandViewMode {
+	LINEAR,
+	CIRCLE
+}
 
+var hand_view_mode := HandViewMode.CIRCLE
 
 # ============================================================
 # Node References
@@ -41,15 +46,20 @@ enum GamePhase {
 @onready var money_label = $RootUI/TopBar/MoneyLabel
 @onready var target_label = $RootUI/TopBar/TargetLabel
 @onready var hands_label = $RootUI/TopBar/HandsLabel
+@onready var circle_hand_container = $RootUI/GameplayUI/BoardAndCircleHBox/CircleHandContainer
+@onready var linear_hand_container = $RootUI/GameplayUI/LinearHandContainer
+@onready var hand_view_toggle_button = $RootUI/GameplayUI/HBoxContainer/HandViewToggleButton
 
 @onready var score_label = $RootUI/GameplayUI/ScoreLabel
-@onready var grid_container = $RootUI/GameplayUI/GridContainer
+@onready var grid_container = $RootUI/GameplayUI/BoardAndCircleHBox/GridContainer
 @onready var selected_container = $RootUI/GameplayUI/SelectedRowControls/SelectedContainer
 @onready var shift_left_button = $RootUI/GameplayUI/SelectedRowControls/ShiftLeftButton
 @onready var shift_right_button = $RootUI/GameplayUI/SelectedRowControls/ShiftRightButton
 @onready var hand_container = $RootUI/GameplayUI/HandContainer
 @onready var play_button = $RootUI/GameplayUI/HBoxContainer/PlayButton
 @onready var discard_button = $RootUI/GameplayUI/HBoxContainer/DiscardButton
+@onready var lock_button = $RootUI/GameplayUI/HBoxContainer/VBoxContainer/LockButton
+@onready var clear_button = $RootUI/GameplayUI/HBoxContainer/VBoxContainer/ClearButton
 
 @onready var perma_shop = $RootUI/ShopPanel/PermaShop
 @onready var consume_shop = $RootUI/ShopPanel/ConsumeShop
@@ -58,6 +68,7 @@ enum GamePhase {
 @onready var pause_menu = $PauseMenu
 @onready var upgrade_list = $PauseMenu/PausePanel/VBoxContainer/UpgradeViewer/UpgradeList
 @onready var resume_button = $PauseMenu/PausePanel/VBoxContainer/ResumeButton
+
 
 
 # ============================================================
@@ -109,6 +120,7 @@ var base_letter_weights := {
 var board_echo_strength := 0.2
 var hand := []
 var selected_cards := []
+var locked_cards := []
 
 var grid := []
 var current_row := 0
@@ -203,16 +215,24 @@ func _ready():
 	next_grade_button.pressed.connect(_on_next_grade_pressed)
 	shift_left_button.pressed.connect(_on_shift_left_pressed)
 	shift_right_button.pressed.connect(_on_shift_right_pressed)
+	hand_view_toggle_button.pressed.connect(toggle_hand_view_mode)
+	lock_button.pressed.connect(toggle_preview_lock)
+	clear_button.pressed.connect(clear_unlocked_preview_cards)
 
 	preview_offset = get_active_window_start()
 	play_button.pressed.connect(play_selected_cards)
 	discard_button.pressed.connect(discard_selected_cards)
+	linear_hand_container.custom_minimum_size = Vector2(760, 120)
+	circle_hand_container.custom_minimum_size = Vector2(360, 360)
+	circle_hand_container.visible = false
 	# Temporary test sticker.
 	owned_stickers.append(VowelLoverSticker.new())
 
 	draw_to_hand()
 	update_grid_ui()
 	update_stage_ui()
+	await get_tree().process_frame
+	update_hand_ui()
 
 
 func _input(event):
@@ -483,7 +503,17 @@ func _on_next_grade_pressed():
 # ============================================================
 # Letter Distribution
 # ============================================================
+func toggle_hand_view_mode():
+	if hand_view_mode == HandViewMode.LINEAR:
+		hand_view_mode = HandViewMode.CIRCLE
+		circle_hand_container.custom_minimum_size = Vector2(360, 360)
+		hand_view_toggle_button.text = "View: Circle"
+	else:
+		hand_view_mode = HandViewMode.LINEAR
+		hand_view_toggle_button.text = "View: Linear"
+		circle_hand_container.custom_minimum_size = Vector2.ZERO
 
+	update_hand_ui()
 func get_current_letter_weights() -> Dictionary:
 	var weights = base_letter_weights.duplicate()
 	var board_counts := {}
@@ -526,17 +556,26 @@ func discard_selected_cards():
 	if selected_cards.is_empty():
 		return
 
-	for card in selected_cards:
-		hand.erase(card)
+	var remaining_selected := []
 
-	selected_cards.clear()
-	preview_offset = get_active_window_start()
+	for card in selected_cards:
+		if locked_cards.has(card):
+			remaining_selected.append(card)
+		else:
+			hand.erase(card)
+
+	selected_cards = remaining_selected
+
+	if !has_locked_cards():
+		preview_offset = get_active_window_start()
 
 	discards_left -= 1
 
 	draw_to_hand()
 	update_hand_ui()
 	update_stage_ui()
+	
+	
 func is_vowel(letter: String) -> bool:
 	return letter in ["A", "E", "I", "O", "U"]
 func draw_random_letter(hand_letter_counts := {}) -> String:
@@ -604,7 +643,8 @@ func toggle_select(card):
 		if selected_cards.size() < MAX_SELECTED_CARDS:
 			selected_cards.append(card)
 
-	auto_center_preview()
+	if !has_locked_cards():
+		auto_center_preview()
 	update_hand_ui()
 
 
@@ -616,8 +656,14 @@ func _on_selected_card_pressed(card):
 	if is_paused:
 		return
 
+	if locked_cards.has(card):
+		return
+
 	selected_cards.erase(card)
-	auto_center_preview()
+
+	if !has_locked_cards():
+		auto_center_preview()
+
 	update_hand_ui()
 
 
@@ -793,7 +839,41 @@ func clear_drag_ghost():
 		drag_ghost.queue_free()
 		drag_ghost = null
 
+func has_locked_cards() -> bool:
+	return !locked_cards.is_empty()
 
+
+func is_card_locked(card) -> bool:
+	return locked_cards.has(card)
+
+func toggle_preview_lock():
+	if selected_cards.is_empty():
+		return
+
+	if has_locked_cards():
+		locked_cards.clear()
+		lock_button.text = "🔒"
+	else:
+		for card in selected_cards:
+			if !locked_cards.has(card):
+				locked_cards.append(card)
+
+		lock_button.text = "🔓"
+
+	update_hand_ui()
+func clear_unlocked_preview_cards():
+	var remaining := []
+
+	for card in selected_cards:
+		if locked_cards.has(card):
+			remaining.append(card)
+
+	selected_cards = remaining
+
+	if !has_locked_cards():
+		preview_offset = get_active_window_start()
+
+	update_hand_ui()
 # ============================================================
 # Play Hand
 # ============================================================
@@ -834,6 +914,8 @@ func play_selected_cards():
 
 
 	selected_cards.clear()
+	locked_cards.clear()
+	lock_button.text = "🔒"
 	preview_offset = get_active_window_start()
 
 	hands_left -= 1
@@ -1237,22 +1319,70 @@ func clear_teacher_modifiers():
 # ============================================================
 
 func update_hand_ui():
-	clear_container(hand_container)
+	clear_container(linear_hand_container)
+	clear_container(circle_hand_container)
 	clear_container(selected_container)
+
+	var use_circle = hand_view_mode == HandViewMode.CIRCLE
+
+	linear_hand_container.visible = !use_circle
+	circle_hand_container.visible = use_circle
+
+	var active_hand_container: Control
+
+	if use_circle:
+		active_hand_container = circle_hand_container
+	else:
+		active_hand_container = linear_hand_container
+
+	var visible_cards := []
 
 	for card in hand:
 		if selected_cards.has(card):
 			continue
 
+		visible_cards.append(card)
+
+	for i in range(visible_cards.size()):
+		var card = visible_cards[i]
+
 		var card_ui = CARD_SCENE.instantiate()
 		card_ui.setup(card, false)
 		card_ui.pressed.connect(_on_card_pressed.bind(card))
 
-		hand_container.add_child(card_ui)
+		active_hand_container.add_child(card_ui)
+
+		if use_circle:
+			position_card_in_circle(card_ui, active_hand_container, i, visible_cards.size())
+		else:
+			position_card_linear(card_ui, active_hand_container, i, visible_cards.size())
 
 	update_selected_preview_ui()
 
+func position_card_in_circle(card_ui: Control, container: Control, index: int, total: int):
+	var radius: float = 125.0
+	var center: Vector2 = container.size / 2.0
 
+	if total <= 1:
+		card_ui.position = center - card_ui.size / 2.0
+		card_ui.rotation = 0.0
+		return
+
+	var angle: float = -PI / 2.0 + TAU * float(index) / float(total)
+
+	var x: float = cos(angle) * radius
+	var y: float = sin(angle) * radius
+
+	card_ui.position = center + Vector2(x, y) - card_ui.size / 2.0
+	card_ui.rotation = 0.0
+func position_card_linear(card_ui: Control, container: Control, index: int, total: int):
+	var spacing: float = 76.0
+	var total_width: float = spacing * float(total - 1)
+	var start_x: float = container.size.x / 2.0 - total_width / 2.0
+	var y: float = container.size.y / 2.0 - card_ui.size.y / 2.0
+
+	card_ui.position = Vector2(start_x + float(index) * spacing, y)
+	card_ui.rotation = 0.0
 func update_selected_preview_ui():
 	clear_container(selected_container)
 
@@ -1323,7 +1453,8 @@ func create_preview_card(card_index, is_active_slot):
 		card_ui.modulate = Color(1, 1, 1, 0.2)
 	elif !is_active_slot:
 		card_ui.modulate = Color(1, 1, 1, 0.45)
-
+	if locked_cards.has(card):
+		card_ui.modulate = Color(1.0, 0.9, 0.45, 1.0)
 	return card_ui
 
 
