@@ -48,12 +48,12 @@ var hand_view_mode := HandViewMode.CIRCLE
 @onready var money_label = $RootUI/TopBar/MoneyLabel
 @onready var target_label = $RootUI/TopBar/TargetLabel
 @onready var hands_label = $RootUI/TopBar/HandsLabel
-@onready var circle_hand_container = $RootUI/GameplayUI/BoardAndCircleHBox/CircleHandContainer
+@onready var circle_hand_container = $RootUI/GameplayUI/BoardAndCircleHBox/HandArea/CircleHandContainer
 @onready var linear_hand_container = $RootUI/GameplayUI/LinearHandContainer
 @onready var hand_view_toggle_button = $RootUI/GameplayUI/HBoxContainer/HandViewToggleButton
 
 @onready var score_label = $RootUI/GameplayUI/ScoreLabel
-@onready var grid_container = $RootUI/GameplayUI/BoardAndCircleHBox/GridContainer
+@onready var grid_container = $RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer
 @onready var selected_container = $RootUI/GameplayUI/SelectedRowControls/SelectedContainer
 @onready var shift_left_button = $RootUI/GameplayUI/SelectedRowControls/ShiftLeftButton
 @onready var shift_right_button = $RootUI/GameplayUI/SelectedRowControls/ShiftRightButton
@@ -259,7 +259,7 @@ func _ready():
 	play_button.pressed.connect(play_selected_cards)
 	discard_button.pressed.connect(discard_selected_cards)
 	linear_hand_container.custom_minimum_size = Vector2(760, 120)
-	circle_hand_container.custom_minimum_size = Vector2(360, 360)
+	circle_hand_container.custom_minimum_size = Vector2(540, 540)
 
 
 
@@ -517,6 +517,7 @@ func _on_sticker_item_pressed(item, button):
 
 	var sticker = item["sticker"].new()
 	owned_stickers.append(sticker)
+	update_owned_permanent_ui()
 
 	update_stage_ui()
 
@@ -611,7 +612,6 @@ func _on_consumable_item_pressed(item, button):
 	button.disabled = true
 	button.text = item["name"] + " - BOUGHT"
 
-
 func update_owned_permanent_ui():
 	clear_container(permanent_item_bar)
 
@@ -619,6 +619,12 @@ func update_owned_permanent_ui():
 		var label = Label.new()
 		label.text = item["name"]
 		label.tooltip_text = item["description"]
+		permanent_item_bar.add_child(label)
+
+	for sticker in owned_stickers:
+		var label = Label.new()
+		label.text = sticker.sticker_name
+		label.tooltip_text = sticker.description
 		permanent_item_bar.add_child(label)
 
 
@@ -639,7 +645,7 @@ func _on_next_grade_pressed():
 func toggle_hand_view_mode():
 	if hand_view_mode == HandViewMode.LINEAR:
 		hand_view_mode = HandViewMode.CIRCLE
-		circle_hand_container.custom_minimum_size = Vector2(360, 360)
+		circle_hand_container.custom_minimum_size = Vector2(540, 540)
 		hand_view_toggle_button.text = "View: Circle"
 	else:
 		hand_view_mode = HandViewMode.LINEAR
@@ -1471,10 +1477,11 @@ func update_hand_ui():
 	var visible_cards := []
 
 	for card in hand:
-		if selected_cards.has(card):
-			continue
+		
 
 		visible_cards.append(card)
+		if selected_cards.has(card):
+			continue
 
 	for i in range(visible_cards.size()):
 		var card = visible_cards[i]
@@ -1482,6 +1489,10 @@ func update_hand_ui():
 		var card_ui = CARD_SCENE.instantiate()
 		card_ui.setup(card, false)
 		card_ui.pressed.connect(_on_card_pressed.bind(card))
+		if selected_cards.has(card):
+			card_ui.modulate = Color(1, 1, 1, 0.15)
+		else:
+			card_ui.modulate = Color(1, 1, 1, 1)
 
 		active_hand_container.add_child(card_ui)
 
@@ -1493,7 +1504,7 @@ func update_hand_ui():
 	update_selected_preview_ui()
 
 func position_card_in_circle(card_ui: Control, container: Control, index: int, total: int):
-	var radius: float = 125.0
+	var radius: float = 250.0
 	var center: Vector2 = container.size / 2.0
 
 	if total <= 1:
@@ -1528,7 +1539,7 @@ func update_selected_preview_ui():
 
 func create_preview_slot(slot_index, active_start):
 	var slot = PanelContainer.new()
-	slot.custom_minimum_size = Vector2(72, 96)
+	slot.custom_minimum_size = Vector2(72, 128)
 	slot.add_theme_stylebox_override("panel", make_preview_slot_style(slot_index, active_start))
 
 	var inner = CenterContainer.new()
