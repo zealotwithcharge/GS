@@ -62,6 +62,7 @@ var hand_view_mode := HandViewMode.CIRCLE
 @onready var discard_button = $RootUI/GameplayUI/HBoxContainer/DiscardButton
 @onready var lock_button = $RootUI/GameplayUI/HBoxContainer/VBoxContainer/LockButton
 @onready var clear_button = $RootUI/GameplayUI/HBoxContainer/VBoxContainer/ClearButton
+@onready var restart_button = $PauseMenu/PausePanel/VBoxContainer/RestartRunButton
 
 @onready var perma_shop = $RootUI/ShopPanel/PermaShop
 @onready var consume_shop = $RootUI/ShopPanel/ConsumeShop
@@ -71,7 +72,7 @@ var hand_view_mode := HandViewMode.CIRCLE
 @onready var pause_menu = $PauseMenu
 @onready var upgrade_list = $PauseMenu/PausePanel/VBoxContainer/UpgradeViewer/UpgradeList
 @onready var resume_button = $PauseMenu/PausePanel/VBoxContainer/ResumeButton
-
+@onready var quit_button = $PauseMenu/PausePanel/VBoxContainer/QuitGameButton
 
 
 # ============================================================
@@ -251,6 +252,8 @@ func _ready():
 	hand_view_toggle_button.pressed.connect(toggle_hand_view_mode)
 	lock_button.pressed.connect(toggle_preview_lock)
 	clear_button.pressed.connect(clear_unlocked_preview_cards)
+	restart_button.pressed.connect(_on_restart_pressed)
+	quit_button.pressed.connect(_on_quit_pressed)
 
 	preview_offset = get_active_window_start()
 	play_button.pressed.connect(play_selected_cards)
@@ -289,6 +292,8 @@ func get_teacher_modifier_text(teacher) -> String:
 		return "No modifier"
 
 	return teacher["description"]
+func _on_quit_pressed():
+	get_tree().quit()
 func update_teacher_viewer():
 	clear_container(teacher_list)
 
@@ -312,7 +317,8 @@ func update_teacher_viewer():
 func _on_resume_pressed():
 	is_paused = false
 	pause_menu.visible = false
-
+func _on_restart_pressed():
+	get_tree().reload_current_scene()
 
 func update_upgrade_viewer():
 	clear_container(upgrade_list)

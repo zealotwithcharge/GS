@@ -417,6 +417,7 @@ alignment = 1
 
 [node name="ShiftLeftButton" type="Button" parent="RootUI/GameplayUI/SelectedRowControls" unique_id=1193353809]
 layout_mode = 2
+text = "◀"
 
 [node name="SelectedContainer" type="HBoxContainer" parent="RootUI/GameplayUI/SelectedRowControls" unique_id=1839187124]
 layout_mode = 2
@@ -424,6 +425,7 @@ alignment = 1
 
 [node name="ShiftRightButton" type="Button" parent="RootUI/GameplayUI/SelectedRowControls" unique_id=875952241]
 layout_mode = 2
+text = "▶"
 
 [node name="LinearHandContainer" type="Control" parent="RootUI/GameplayUI" unique_id=1463587234]
 layout_mode = 2
@@ -435,10 +437,12 @@ alignment = 1
 [node name="PlayButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer" unique_id=2003499558]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
+text = "Play Hand"
 
 [node name="DiscardButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer" unique_id=1651107215]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
+text = "Discard"
 
 [node name="HandViewToggleButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer" unique_id=2078856006]
 visible = false
@@ -451,31 +455,48 @@ layout_mode = 2
 [node name="LockButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer/VBoxContainer" unique_id=976037237]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
+text = "🔒"
 
 [node name="ClearButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer/VBoxContainer" unique_id=900930732]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
+text = "🧹"
 
 [node name="ShopPanel" type="VBoxContainer" parent="RootUI" unique_id=1748427424]
 layout_mode = 2
 
 [node name="ShopTitleLabel" type="Label" parent="RootUI/ShopPanel" unique_id=159039670]
 layout_mode = 2
+text = "Shop
+
+"
+horizontal_alignment = 1
 
 [node name="PermaShopLabel" type="Label" parent="RootUI/ShopPanel" unique_id=1515263458]
 layout_mode = 2
+text = "
+Stickers
+"
+horizontal_alignment = 1
 
 [node name="PermaShop" type="HBoxContainer" parent="RootUI/ShopPanel" unique_id=1741302238]
 layout_mode = 2
+alignment = 1
 
 [node name="ConsumeShopLabel" type="Label" parent="RootUI/ShopPanel" unique_id=1597541133]
 layout_mode = 2
+text = "
+Lessons
+"
+horizontal_alignment = 1
 
 [node name="ConsumeShop" type="HBoxContainer" parent="RootUI/ShopPanel" unique_id=468373460]
 layout_mode = 2
+alignment = 1
 
 [node name="NextGradeButton" type="Button" parent="RootUI/ShopPanel" unique_id=807453527]
 layout_mode = 2
+text = "Next Grade"
 
 [node name="PauseMenu" type="Control" parent="." unique_id=1464716239]
 layout_mode = 1
@@ -507,9 +528,14 @@ layout_mode = 2
 
 [node name="PauseTitleLabel" type="Label" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=1128453337]
 layout_mode = 2
+text = "Pause"
+horizontal_alignment = 1
 
 [node name="UpgradeTitleLabel" type="Label" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=113388203]
 layout_mode = 2
+text = "
+Upgrades"
+horizontal_alignment = 1
 
 [node name="UpgradeViewer" type="CenterContainer" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=2093790345]
 layout_mode = 2
@@ -517,14 +543,27 @@ layout_mode = 2
 [node name="UpgradeList" type="VBoxContainer" parent="PauseMenu/PausePanel/VBoxContainer/UpgradeViewer" unique_id=967879688]
 layout_mode = 2
 
+[node name="TeacherTitleLabel" type="Label" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=708656447]
+layout_mode = 2
+text = "
+Upcoming Grades"
+horizontal_alignment = 1
+
 [node name="TeacherViewer" type="CenterContainer" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=251370600]
 layout_mode = 2
 
 [node name="TeacherList" type="VBoxContainer" parent="PauseMenu/PausePanel/VBoxContainer/TeacherViewer" unique_id=1509697771]
 layout_mode = 2
+alignment = 1
 
 [node name="ResumeButton" type="Button" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=644191609]
 layout_mode = 2
+text = "Resume"
 
 [node name="RestartRunButton" type="Button" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=370929346]
 layout_mode = 2
+text = "Restart"
+
+[node name="QuitGameButton" type="Button" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=1175531142]
+layout_mode = 2
+text = "Quit Game"
