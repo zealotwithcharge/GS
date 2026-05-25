@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://dh4a6touenh4v" path="res://card.gd" id="1_dd2wi"]
 
 [node name="Card" type="Button" unique_id=1248528683]
-custom_minimum_size = Vector2(128, 128)
+custom_minimum_size = Vector2(64, 128)
 offset_right = 33.0
 offset_bottom = 54.0
 script = ExtResource("1_dd2wi")
