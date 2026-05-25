@@ -17,7 +17,8 @@ const PREVIEW_CARD_SCALE := Vector2(0.75, 0.75)
 const CARD_SCENE := preload("res://Card.tscn")
 const DISCARDS_PER_GRADE := 3
 const LESSON_IDS := ["H3", "H4", "H5", "V3", "V4", "V5", "D3", "D4", "D5"]
-
+const HAND_DUPLICATE_PENALTY := 0.35
+const MIN_DRAW_WEIGHT_MULTIPLIER := 0.15
 
 enum GamePhase {
 	PLAYING,
@@ -105,7 +106,7 @@ var base_letter_weights := {
 	"Z": 1
 }
 
-var board_echo_strength := 0.15
+var board_echo_strength := 0.2
 var hand := []
 var selected_cards := []
 
@@ -495,6 +496,10 @@ func get_current_letter_weights() -> Dictionary:
 				continue
 
 			var letter = letter_state.letter
+
+			if is_vowel(letter):
+				continue
+
 			board_counts[letter] = board_counts.get(letter, 0) + 1
 
 	for letter in board_counts.keys():
@@ -508,7 +513,6 @@ func get_current_letter_weights() -> Dictionary:
 		weights[letter] += min(echo_bonus, max_bonus)
 
 	return weights
-
 func discard_selected_cards():
 	if is_paused:
 		return
@@ -533,12 +537,23 @@ func discard_selected_cards():
 	draw_to_hand()
 	update_hand_ui()
 	update_stage_ui()
+func is_vowel(letter: String) -> bool:
+	return letter in ["A", "E", "I", "O", "U"]
 func draw_random_letter(hand_letter_counts := {}) -> String:
 	var weights = get_current_letter_weights()
 
 	for letter in hand_letter_counts.keys():
-		if hand_letter_counts[letter] >= MAX_SAME_LETTER_IN_HAND:
+		if !weights.has(letter):
+			continue
+
+		var count = hand_letter_counts[letter]
+
+		if count >= MAX_SAME_LETTER_IN_HAND:
 			weights[letter] = 0
+		else:
+			var penalty = 1.0 - HAND_DUPLICATE_PENALTY * count
+			penalty = max(penalty, MIN_DRAW_WEIGHT_MULTIPLIER)
+			weights[letter] *= penalty
 
 	var total_weight := 0.0
 
