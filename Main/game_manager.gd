@@ -10,11 +10,12 @@ const GRID_SIZE := 5
 const GRID_PLACE_SIZE := 5
 const HANDS_PER_GRADE := 5
 const PREVIEW_SLOT_COUNT := 2 * HAND_SIZE - GRID_PLACE_SIZE
-
+const MAX_SAME_LETTER_IN_HAND := 3
+const MAX_BOARD_ECHO_MULTIPLIER := 1.5
 const DRAG_THRESHOLD := 8.0
 const PREVIEW_CARD_SCALE := Vector2(0.75, 0.75)
 const CARD_SCENE := preload("res://Card.tscn")
-
+const DISCARDS_PER_GRADE := 3
 const LESSON_IDS := ["H3", "H4", "H5", "V3", "V4", "V5", "D3", "D4", "D5"]
 
 
@@ -46,6 +47,8 @@ enum GamePhase {
 @onready var shift_left_button = $RootUI/GameplayUI/SelectedRowControls/ShiftLeftButton
 @onready var shift_right_button = $RootUI/GameplayUI/SelectedRowControls/ShiftRightButton
 @onready var hand_container = $RootUI/GameplayUI/HandContainer
+@onready var play_button = $RootUI/GameplayUI/HBoxContainer/PlayButton
+@onready var discard_button = $RootUI/GameplayUI/HBoxContainer/DiscardButton
 
 @onready var perma_shop = $RootUI/ShopPanel/PermaShop
 @onready var consume_shop = $RootUI/ShopPanel/ConsumeShop
@@ -62,7 +65,7 @@ enum GamePhase {
 
 var game_phase := GamePhase.PLAYING
 var is_paused := false
-
+var discards_left := DISCARDS_PER_GRADE
 var money := 25
 var hands_left := HANDS_PER_GRADE
 var total_score := 0
@@ -70,8 +73,39 @@ var total_score := 0
 var school_index := 0
 var grade_index := 0
 
-var deck := []
-var discard := []
+var base_letter_weights := {
+	"A": 8,
+	"E": 10,
+	"I": 8,
+	"O": 8,
+	"U": 5,
+
+	"N": 5,
+	"R": 5,
+	"T": 3,
+	"S": 3,
+	"L": 3,
+	"D": 3,
+
+	"G": 2,
+	"M": 2,
+	"P": 2,
+	"B": 2,
+	"C": 2,
+	"F": 2,
+	"H": 2,
+	"V": 2,
+	"W": 2,
+	"Y": 2,
+
+	"J": 1,
+	"K": 1,
+	"Q": 1,
+	"X": 1,
+	"Z": 1
+}
+
+var board_echo_strength := 0.15
 var hand := []
 var selected_cards := []
 
@@ -109,7 +143,7 @@ var schools := [
 	{
 		"name": "Elementary School",
 		"grades": 5,
-		"base_target": 100,
+		"base_target": 500,
 		"target_growth": 75,
 		"reward": 5
 	},
@@ -158,7 +192,6 @@ var consumable_pool := [
 
 func _ready():
 	load_dictionary()
-	create_starting_deck()
 	create_grid()
 
 	pause_menu.visible = false
@@ -171,7 +204,8 @@ func _ready():
 	shift_right_button.pressed.connect(_on_shift_right_pressed)
 
 	preview_offset = get_active_window_start()
-
+	play_button.pressed.connect(play_selected_cards)
+	discard_button.pressed.connect(discard_selected_cards)
 	# Temporary test sticker.
 	owned_stickers.append(VowelLoverSticker.new())
 
@@ -249,7 +283,7 @@ func update_stage_ui():
 	stage_label.text = get_current_school()["name"] + " - Grade " + str(get_current_grade_number())
 	money_label.text = "$" + str(money)
 	target_label.text = "Target: " + str(get_target_score())
-	hands_label.text = "Hands: " + str(hands_left)
+	hands_label.text = "Hands: " + str(hands_left) + " | Discards: " + str(discards_left)
 	score_label.text = "Score: " + str(total_score)
 
 
@@ -308,7 +342,7 @@ func start_grade():
 
 	gameplay_ui.visible = true
 	shop_panel.visible = false
-
+	discards_left = DISCARDS_PER_GRADE
 	total_score = 0
 	hands_left = HANDS_PER_GRADE
 	current_row = 0
@@ -445,63 +479,105 @@ func _on_next_grade_pressed():
 # Deck / Hand
 # ============================================================
 
-func create_starting_deck():
-	deck.clear()
+# ============================================================
+# Letter Distribution
+# ============================================================
 
-	var letters = [
-		"A", "A", "A", "A",
-		"I", "I", "I", "I", 
-		"E", "E", "E", "E", "E", "E",
-		"R", "R", "R",
-		"T", "T", "T",
-		"O", "O", "O", "O",
-		"N", "N", "N",
-		"S", "S","S",
-		"L", "L",
-		"D", "D",
-		"U", "U",
-		"G", "M", "P", "B", "C", "F","H","J","K","Q","V","W","X","Y","Z",
-	]
+func get_current_letter_weights() -> Dictionary:
+	var weights = base_letter_weights.duplicate()
+	var board_counts := {}
 
-	var uid = 0
+	for y in range(GRID_SIZE):
+		for x in range(GRID_SIZE):
+			var letter_state = grid[y][x]
 
-	for l in letters:
-		deck.append({
-			"id": uid,
-			"letter": l
-		})
-		uid += 1
+			if letter_state.is_blank():
+				continue
 
-	deck.shuffle()
+			var letter = letter_state.letter
+			board_counts[letter] = board_counts.get(letter, 0) + 1
 
+	for letter in board_counts.keys():
+		if !weights.has(letter):
+			continue
 
-func draw_card():
-	if deck.is_empty():
-		reshuffle_discard()
+		var base_weight = base_letter_weights[letter]
+		var echo_bonus = base_weight * board_echo_strength * board_counts[letter]
+		var max_bonus = base_weight * MAX_BOARD_ECHO_MULTIPLIER
 
-	if deck.is_empty():
-		return null
+		weights[letter] += min(echo_bonus, max_bonus)
 
-	return deck.pop_back()
+	return weights
 
+func discard_selected_cards():
+	if is_paused:
+		return
 
-func reshuffle_discard():
-	deck = discard.duplicate()
-	discard.clear()
-	deck.shuffle()
+	if game_phase != GamePhase.PLAYING:
+		return
 
+	if discards_left <= 0:
+		return
+
+	if selected_cards.is_empty():
+		return
+
+	for card in selected_cards:
+		hand.erase(card)
+
+	selected_cards.clear()
+	preview_offset = get_active_window_start()
+
+	discards_left -= 1
+
+	draw_to_hand()
+	update_hand_ui()
+	update_stage_ui()
+func draw_random_letter(hand_letter_counts := {}) -> String:
+	var weights = get_current_letter_weights()
+
+	for letter in hand_letter_counts.keys():
+		if hand_letter_counts[letter] >= MAX_SAME_LETTER_IN_HAND:
+			weights[letter] = 0
+
+	var total_weight := 0.0
+
+	for value in weights.values():
+		total_weight += float(value)
+
+	if total_weight <= 0:
+		return "E"
+
+	var roll = randf() * total_weight
+	var running := 0.0
+
+	for letter in weights.keys():
+		running += float(weights[letter])
+
+		if roll <= running:
+			return letter
+
+	return "E"
 
 func draw_to_hand():
-	while hand.size() < HAND_SIZE:
-		var card = draw_card()
+	var hand_letter_counts := {}
 
-		if card == null:
-			break
+	for card in hand:
+		var letter = card["letter"]
+		hand_letter_counts[letter] = hand_letter_counts.get(letter, 0) + 1
+
+	while hand.size() < HAND_SIZE:
+		var letter = draw_random_letter(hand_letter_counts)
+
+		var card = {
+			"id": randi(),
+			"letter": letter
+		}
 
 		hand.append(card)
+		hand_letter_counts[letter] = hand_letter_counts.get(letter, 0) + 1
 
 	update_hand_ui()
-
 
 func toggle_select(card):
 	if is_paused:
@@ -740,7 +816,7 @@ func play_selected_cards():
 
 	for card in selected_cards:
 		hand.erase(card)
-		discard.append(card)
+
 
 	selected_cards.clear()
 	preview_offset = get_active_window_start()
@@ -1402,8 +1478,7 @@ func animate_cant_afford(button):
 
 func save_game():
 	var data = {
-		"deck": deck,
-		"discard": discard,
+
 		"hand": hand,
 		"selected_cards": selected_cards,
 		"grid": serialize_grid(),
@@ -1432,8 +1507,7 @@ func load_game():
 	if json == null:
 		return
 
-	deck = json["deck"]
-	discard = json["discard"]
+
 	hand = json["hand"]
 	selected_cards = json.get("selected_cards", [])
 	grid = deserialize_grid(json.get("grid", []))
