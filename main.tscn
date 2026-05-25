@@ -517,6 +517,12 @@ layout_mode = 2
 [node name="UpgradeList" type="VBoxContainer" parent="PauseMenu/PausePanel/VBoxContainer/UpgradeViewer" unique_id=967879688]
 layout_mode = 2
 
+[node name="TeacherViewer" type="CenterContainer" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=251370600]
+layout_mode = 2
+
+[node name="TeacherList" type="VBoxContainer" parent="PauseMenu/PausePanel/VBoxContainer/TeacherViewer" unique_id=1509697771]
+layout_mode = 2
+
 [node name="ResumeButton" type="Button" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=644191609]
 layout_mode = 2
 

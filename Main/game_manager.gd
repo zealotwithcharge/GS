@@ -67,6 +67,7 @@ var hand_view_mode := HandViewMode.CIRCLE
 @onready var consume_shop = $RootUI/ShopPanel/ConsumeShop
 @onready var next_grade_button = $RootUI/ShopPanel/NextGradeButton
 
+@onready var teacher_list = $PauseMenu/PausePanel/VBoxContainer/TeacherViewer/TeacherList
 @onready var pause_menu = $PauseMenu
 @onready var upgrade_list = $PauseMenu/PausePanel/VBoxContainer/UpgradeViewer/UpgradeList
 @onready var resume_button = $PauseMenu/PausePanel/VBoxContainer/ResumeButton
@@ -164,7 +165,22 @@ var teacher_pool := [
 		"name": "Mr. Plain",
 		"description": "No modifier this grade.",
 		"stickers": []
-	}
+	},
+		{
+		"name": "Mr. Plain2",
+		"description": "No modifier this grade.",
+		"stickers": []
+	},
+		{
+		"name": "Mr. Plain3",
+		"description": "No modifier this grade.",
+		"stickers": []
+	},
+		{
+		"name": "Mr. Plain4",
+		"description": "No modifier this grade.",
+		"stickers": []
+	},
 ]
 
 var schools := [
@@ -267,8 +283,32 @@ func toggle_pause_menu():
 
 	if is_paused:
 		update_upgrade_viewer()
+		update_teacher_viewer()
+func get_teacher_modifier_text(teacher) -> String:
+	if teacher["stickers"].is_empty():
+		return "No modifier"
 
+	return teacher["description"]
+func update_teacher_viewer():
+	clear_container(teacher_list)
 
+	if teacher_order.is_empty():
+		return
+
+	for i in range(get_current_school()["grades"]):
+		var teacher = teacher_order[i % teacher_order.size()]
+		var grade_number = i + 1
+
+		var label = Label.new()
+
+		var prefix = "Grade " + str(grade_number) + ": "
+
+		if i == grade_index:
+			prefix = "▶ " + prefix
+
+		label.text = prefix + teacher["name"] + " - " + get_teacher_modifier_text(teacher)
+
+		teacher_list.add_child(label)
 func _on_resume_pressed():
 	is_paused = false
 	pause_menu.visible = false
