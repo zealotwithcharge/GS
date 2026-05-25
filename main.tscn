@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://n145wwlj7v06"]
 
 [ext_resource type="Script" uid="uid://ctoxwa0mq70au" path="res://Main/game_manager.gd" id="1_0xm2m"]
-[ext_resource type="Script" uid="uid://bdfeq1k00j4n6" path="res://play_button.gd" id="1_ig7tw"]
 
 [node name="Main" type="Control" unique_id=511279096]
 layout_mode = 3
@@ -22,6 +21,7 @@ grow_vertical = 2
 
 [node name="TopBar" type="HBoxContainer" parent="RootUI" unique_id=1369655862]
 layout_mode = 2
+size_flags_vertical = 0
 alignment = 1
 
 [node name="StageLabel" type="Label" parent="RootUI/TopBar" unique_id=1261684474]
@@ -36,12 +36,13 @@ layout_mode = 2
 [node name="HandsLabel" type="Label" parent="RootUI/TopBar" unique_id=1158795910]
 layout_mode = 2
 
-[node name="PermanentItemBar" type="HBoxContainer" parent="RootUI" unique_id=825246364]
+[node name="PermanentItemBar" type="HBoxContainer" parent="RootUI" unique_id=430309472]
 layout_mode = 2
 alignment = 1
 
 [node name="GameplayUI" type="VBoxContainer" parent="RootUI" unique_id=515578274]
 layout_mode = 2
+size_flags_vertical = 3
 alignment = 1
 
 [node name="ScoreLabel" type="Label" parent="RootUI/GameplayUI" unique_id=1124615574]
@@ -49,16 +50,25 @@ layout_mode = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="GridContainer" type="GridContainer" parent="RootUI/GameplayUI" unique_id=1875834840]
+[node name="BoardAndCircleHBox" type="HBoxContainer" parent="RootUI/GameplayUI" unique_id=1112142977]
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_vertical = 3
+alignment = 1
+
+[node name="GridArea" type="CenterContainer" parent="RootUI/GameplayUI/BoardAndCircleHBox" unique_id=1873580982]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GridContainer" type="GridContainer" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea" unique_id=1875834840]
+layout_mode = 2
+size_flags_horizontal = 3
 columns = 5
 
-[node name="Control" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=1365135427]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1365135427]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control" unique_id=1512276334]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control" unique_id=1512276334]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -68,11 +78,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control2" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=627472154]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control2" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1356829787]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control2" unique_id=22502028]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control2" unique_id=17830250]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -82,11 +92,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control3" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=860579799]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control3" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=192631178]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control3" unique_id=137729840]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control3" unique_id=892972090]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -96,11 +106,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control4" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=883808663]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control4" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=805028529]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control4" unique_id=465011188]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control4" unique_id=1891045774]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -110,11 +120,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control5" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=529568267]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control5" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=217850326]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control5" unique_id=1705141344]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control5" unique_id=699565345]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -124,11 +134,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control6" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=2140066801]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control6" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=613401259]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control6" unique_id=1354900175]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control6" unique_id=79618060]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -138,11 +148,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control7" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=1858916121]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control7" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1707535203]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control7" unique_id=991600699]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control7" unique_id=646698331]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -152,11 +162,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control8" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=740976362]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control8" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=821081286]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control8" unique_id=2138302980]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control8" unique_id=1736426068]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -166,11 +176,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control9" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=201822478]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control9" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1400014486]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control9" unique_id=1235576280]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control9" unique_id=1558705232]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -180,11 +190,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control10" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=608163912]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control10" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=724285674]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control10" unique_id=1200246318]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control10" unique_id=1289224617]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -194,11 +204,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control11" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=6780515]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control11" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=517716222]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control11" unique_id=1363109952]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control11" unique_id=38906858]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -208,11 +218,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control12" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=2048075369]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control12" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1895929094]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control12" unique_id=1206248195]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control12" unique_id=1600367944]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -222,11 +232,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control13" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=598653915]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control13" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1124684195]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control13" unique_id=1438341948]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control13" unique_id=253263153]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -236,11 +246,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control14" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=1913086271]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control14" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=66823012]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control14" unique_id=1858626327]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control14" unique_id=974379976]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -250,11 +260,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control15" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=532260437]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control15" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1608951460]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control15" unique_id=1955615649]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control15" unique_id=1039482677]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -264,11 +274,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control16" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=686132299]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control16" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=145579741]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control16" unique_id=644464629]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control16" unique_id=1550608535]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -278,11 +288,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control17" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=603487590]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control17" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1442335206]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control17" unique_id=397311542]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control17" unique_id=879164113]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -292,11 +302,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control18" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=493974878]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control18" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=147613066]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control18" unique_id=1863876817]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control18" unique_id=222483744]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -306,11 +316,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control19" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=1844640426]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control19" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=611393452]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control19" unique_id=1693324966]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control19" unique_id=1998114006]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -320,11 +330,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control20" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=387586134]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control20" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=368841631]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control20" unique_id=1426544167]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control20" unique_id=1447373872]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -334,11 +344,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control21" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=1267825000]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control21" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1718483928]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control21" unique_id=864809962]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control21" unique_id=1989991300]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -348,11 +358,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control22" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=1372977720]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control22" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1966278826]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control22" unique_id=1730686989]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control22" unique_id=572126615]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -362,11 +372,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control23" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=2010056434]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control23" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1727417444]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control23" unique_id=661181388]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control23" unique_id=297169307]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -376,11 +386,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control24" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=1431688697]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control24" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=1430900082]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control24" unique_id=1504507907]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control24" unique_id=925437035]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -390,11 +400,11 @@ grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Control25" type="Control" parent="RootUI/GameplayUI/GridContainer" unique_id=352268042]
-custom_minimum_size = Vector2(64, 64)
+[node name="Control25" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer" unique_id=854124035]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="RootUI/GameplayUI/GridContainer/Control25" unique_id=1746826583]
+[node name="Label" type="Label" parent="RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer/Control25" unique_id=100452677]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -403,6 +413,15 @@ grow_horizontal = 2
 grow_vertical = 2
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="HandArea" type="CenterContainer" parent="RootUI/GameplayUI/BoardAndCircleHBox" unique_id=1300403910]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CircleHandContainer" type="Control" parent="RootUI/GameplayUI/BoardAndCircleHBox/HandArea" unique_id=790350722]
+custom_minimum_size = Vector2(300, 200)
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="SelectedRowControls" type="HBoxContainer" parent="RootUI/GameplayUI" unique_id=1769788610]
 layout_mode = 2
@@ -410,6 +429,7 @@ alignment = 1
 
 [node name="ShiftLeftButton" type="Button" parent="RootUI/GameplayUI/SelectedRowControls" unique_id=1193353809]
 layout_mode = 2
+text = "◀"
 
 [node name="SelectedContainer" type="HBoxContainer" parent="RootUI/GameplayUI/SelectedRowControls" unique_id=1839187124]
 layout_mode = 2
@@ -417,35 +437,79 @@ alignment = 1
 
 [node name="ShiftRightButton" type="Button" parent="RootUI/GameplayUI/SelectedRowControls" unique_id=875952241]
 layout_mode = 2
+text = "▶"
 
-[node name="HandContainer" type="HBoxContainer" parent="RootUI/GameplayUI" unique_id=303839749]
+[node name="LinearHandContainer" type="Control" parent="RootUI/GameplayUI" unique_id=1463587234]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="RootUI/GameplayUI" unique_id=1883880396]
 layout_mode = 2
 alignment = 1
 
-[node name="PlayButton" type="Button" parent="RootUI/GameplayUI" unique_id=2003499558]
+[node name="PlayButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer" unique_id=2003499558]
+custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
-script = ExtResource("1_ig7tw")
+text = "Play Hand"
+
+[node name="DiscardButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer" unique_id=1651107215]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+text = "Discard"
+
+[node name="HandViewToggleButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer" unique_id=2078856006]
+visible = false
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="RootUI/GameplayUI/HBoxContainer" unique_id=950618108]
+layout_mode = 2
+
+[node name="LockButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer/VBoxContainer" unique_id=976037237]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+text = "🔒"
+
+[node name="ClearButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer/VBoxContainer" unique_id=900930732]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+text = "🧹"
 
 [node name="ShopPanel" type="VBoxContainer" parent="RootUI" unique_id=1748427424]
 layout_mode = 2
+size_flags_vertical = 3
 
 [node name="ShopTitleLabel" type="Label" parent="RootUI/ShopPanel" unique_id=159039670]
 layout_mode = 2
+text = "Shop
+
+"
+horizontal_alignment = 1
 
 [node name="PermaShopLabel" type="Label" parent="RootUI/ShopPanel" unique_id=1515263458]
 layout_mode = 2
+text = "
+Stickers
+"
+horizontal_alignment = 1
 
 [node name="PermaShop" type="HBoxContainer" parent="RootUI/ShopPanel" unique_id=1741302238]
 layout_mode = 2
+alignment = 1
 
 [node name="ConsumeShopLabel" type="Label" parent="RootUI/ShopPanel" unique_id=1597541133]
 layout_mode = 2
+text = "
+Lessons
+"
+horizontal_alignment = 1
 
 [node name="ConsumeShop" type="HBoxContainer" parent="RootUI/ShopPanel" unique_id=468373460]
 layout_mode = 2
+alignment = 1
 
 [node name="NextGradeButton" type="Button" parent="RootUI/ShopPanel" unique_id=807453527]
 layout_mode = 2
+text = "Next Grade"
 
 [node name="PauseMenu" type="Control" parent="." unique_id=1464716239]
 layout_mode = 1
@@ -477,9 +541,14 @@ layout_mode = 2
 
 [node name="PauseTitleLabel" type="Label" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=1128453337]
 layout_mode = 2
+text = "Pause"
+horizontal_alignment = 1
 
 [node name="UpgradeTitleLabel" type="Label" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=113388203]
 layout_mode = 2
+text = "
+Upgrades"
+horizontal_alignment = 1
 
 [node name="UpgradeViewer" type="CenterContainer" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=2093790345]
 layout_mode = 2
@@ -487,8 +556,27 @@ layout_mode = 2
 [node name="UpgradeList" type="VBoxContainer" parent="PauseMenu/PausePanel/VBoxContainer/UpgradeViewer" unique_id=967879688]
 layout_mode = 2
 
+[node name="TeacherTitleLabel" type="Label" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=708656447]
+layout_mode = 2
+text = "
+Upcoming Grades"
+horizontal_alignment = 1
+
+[node name="TeacherViewer" type="CenterContainer" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=251370600]
+layout_mode = 2
+
+[node name="TeacherList" type="VBoxContainer" parent="PauseMenu/PausePanel/VBoxContainer/TeacherViewer" unique_id=1509697771]
+layout_mode = 2
+alignment = 1
+
 [node name="ResumeButton" type="Button" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=644191609]
 layout_mode = 2
+text = "Resume"
 
 [node name="RestartRunButton" type="Button" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=370929346]
 layout_mode = 2
+text = "Restart"
+
+[node name="QuitGameButton" type="Button" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=1175531142]
+layout_mode = 2
+text = "Quit Game"

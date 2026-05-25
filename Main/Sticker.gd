@@ -3,7 +3,7 @@ extends Resource
 
 var sticker_name := "Sticker"
 var description := ""
-
+var sticker_id := "sticker"
 var resets_each_hand := false
 var resets_each_grade := true
 
@@ -27,3 +27,4 @@ func mark_affected(letter_state):
 
 func reset():
 	affected_letter_ids.clear()
+	

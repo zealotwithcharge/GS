@@ -10,13 +10,15 @@ const GRID_SIZE := 5
 const GRID_PLACE_SIZE := 5
 const HANDS_PER_GRADE := 5
 const PREVIEW_SLOT_COUNT := 2 * HAND_SIZE - GRID_PLACE_SIZE
-
+const MAX_SAME_LETTER_IN_HAND := 3
+const MAX_BOARD_ECHO_MULTIPLIER := 1.5
 const DRAG_THRESHOLD := 8.0
 const PREVIEW_CARD_SCALE := Vector2(0.75, 0.75)
 const CARD_SCENE := preload("res://Card.tscn")
-
+const DISCARDS_PER_GRADE := 3
 const LESSON_IDS := ["H3", "H4", "H5", "V3", "V4", "V5", "D3", "D4", "D5"]
-
+const HAND_DUPLICATE_PENALTY := 0.35
+const MIN_DRAW_WEIGHT_MULTIPLIER := 0.15
 
 enum GamePhase {
 	PLAYING,
@@ -24,7 +26,14 @@ enum GamePhase {
 	GAME_OVER,
 	WIN
 }
+enum HandViewMode {
+	LINEAR,
+	CIRCLE
+}
 
+var teacher_order := []
+var current_teacher = null
+var hand_view_mode := HandViewMode.CIRCLE
 
 # ============================================================
 # Node References
@@ -39,21 +48,31 @@ enum GamePhase {
 @onready var money_label = $RootUI/TopBar/MoneyLabel
 @onready var target_label = $RootUI/TopBar/TargetLabel
 @onready var hands_label = $RootUI/TopBar/HandsLabel
+@onready var circle_hand_container = $RootUI/GameplayUI/BoardAndCircleHBox/HandArea/CircleHandContainer
+@onready var linear_hand_container = $RootUI/GameplayUI/LinearHandContainer
+@onready var hand_view_toggle_button = $RootUI/GameplayUI/HBoxContainer/HandViewToggleButton
 
 @onready var score_label = $RootUI/GameplayUI/ScoreLabel
-@onready var grid_container = $RootUI/GameplayUI/GridContainer
+@onready var grid_container = $RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer
 @onready var selected_container = $RootUI/GameplayUI/SelectedRowControls/SelectedContainer
 @onready var shift_left_button = $RootUI/GameplayUI/SelectedRowControls/ShiftLeftButton
 @onready var shift_right_button = $RootUI/GameplayUI/SelectedRowControls/ShiftRightButton
 @onready var hand_container = $RootUI/GameplayUI/HandContainer
+@onready var play_button = $RootUI/GameplayUI/HBoxContainer/PlayButton
+@onready var discard_button = $RootUI/GameplayUI/HBoxContainer/DiscardButton
+@onready var lock_button = $RootUI/GameplayUI/HBoxContainer/VBoxContainer/LockButton
+@onready var clear_button = $RootUI/GameplayUI/HBoxContainer/VBoxContainer/ClearButton
+@onready var restart_button = $PauseMenu/PausePanel/VBoxContainer/RestartRunButton
 
 @onready var perma_shop = $RootUI/ShopPanel/PermaShop
 @onready var consume_shop = $RootUI/ShopPanel/ConsumeShop
 @onready var next_grade_button = $RootUI/ShopPanel/NextGradeButton
 
+@onready var teacher_list = $PauseMenu/PausePanel/VBoxContainer/TeacherViewer/TeacherList
 @onready var pause_menu = $PauseMenu
 @onready var upgrade_list = $PauseMenu/PausePanel/VBoxContainer/UpgradeViewer/UpgradeList
 @onready var resume_button = $PauseMenu/PausePanel/VBoxContainer/ResumeButton
+@onready var quit_button = $PauseMenu/PausePanel/VBoxContainer/QuitGameButton
 
 
 # ============================================================
@@ -62,7 +81,7 @@ enum GamePhase {
 
 var game_phase := GamePhase.PLAYING
 var is_paused := false
-
+var discards_left := DISCARDS_PER_GRADE
 var money := 25
 var hands_left := HANDS_PER_GRADE
 var total_score := 0
@@ -70,10 +89,42 @@ var total_score := 0
 var school_index := 0
 var grade_index := 0
 
-var deck := []
-var discard := []
+var base_letter_weights := {
+	"A": 8,
+	"E": 10,
+	"I": 8,
+	"O": 8,
+	"U": 5,
+
+	"N": 5,
+	"R": 5,
+	"T": 3,
+	"S": 3,
+	"L": 3,
+	"D": 3,
+
+	"G": 2,
+	"M": 2,
+	"P": 2,
+	"B": 2,
+	"C": 2,
+	"F": 2,
+	"H": 2,
+	"V": 2,
+	"W": 2,
+	"Y": 2,
+
+	"J": 1,
+	"K": 1,
+	"Q": 1,
+	"X": 1,
+	"Z": 1
+}
+
+var board_echo_strength := 0.2
 var hand := []
 var selected_cards := []
+var locked_cards := []
 
 var grid := []
 var current_row := 0
@@ -105,11 +156,39 @@ var score_upgrades := {
 	"D3": 0, "D4": 0, "D5": 0
 }
 
+var teacher_pool := [
+	{
+		"name": "Ms. Vowels",
+		"description": "Vowels grow faster this grade.",
+		"stickers": [VowelLoverSticker]
+	},
+	{
+		"name": "Mr. Plain",
+		"description": "No modifier this grade.",
+		"stickers": []
+	},
+		{
+		"name": "Mr. Plain2",
+		"description": "No modifier this grade.",
+		"stickers": []
+	},
+		{
+		"name": "Mr. Plain3",
+		"description": "No modifier this grade.",
+		"stickers": []
+	},
+		{
+		"name": "Mr. Plain4",
+		"description": "No modifier this grade.",
+		"stickers": []
+	},
+]
+
 var schools := [
 	{
 		"name": "Elementary School",
 		"grades": 5,
-		"base_target": 100,
+		"base_target": 50,
 		"target_growth": 75,
 		"reward": 5
 	},
@@ -129,14 +208,16 @@ var schools := [
 	}
 ]
 
-var permanent_pool := [
-	{"name": "Gold Star", "cost": 6, "description": "Nothing. You rule."},
-	{"name": "Pencil Case", "cost": 7, "description": "Placeholder permanent item."},
-	{"name": "Eraser", "cost": 8, "description": "Placeholder permanent item."},
-	{"name": "Hall Pass", "cost": 9, "description": "Placeholder permanent item."},
-	{"name": "Detention Slip", "cost": 10, "description": "Placeholder permanent item."}
+var sticker_pool := [
+	{
+		"id": "vowel_lover",
+		"name": "Vowel Lover",
+		"cost": 8,
+		"description": "Double the growth of vowels.",
+		"sticker": VowelLoverSticker
+	}
 ]
-
+var shop_sticker_items := []
 var consumable_pool := [
 	{"id": "H3", "name": "H3", "cost": 6, "direction": "H", "length": 3, "description": "Horizontal 3-letter words score as if they were 1 letter longer."},
 	{"id": "H4", "name": "H4", "cost": 5, "direction": "H", "length": 4, "description": "Horizontal 4-letter words score as if they were 1 letter longer."},
@@ -158,9 +239,8 @@ var consumable_pool := [
 
 func _ready():
 	load_dictionary()
-	create_starting_deck()
 	create_grid()
-
+	create_teacher_order()
 	pause_menu.visible = false
 	shop_panel.visible = false
 	gameplay_ui.visible = true
@@ -169,15 +249,23 @@ func _ready():
 	next_grade_button.pressed.connect(_on_next_grade_pressed)
 	shift_left_button.pressed.connect(_on_shift_left_pressed)
 	shift_right_button.pressed.connect(_on_shift_right_pressed)
+	hand_view_toggle_button.pressed.connect(toggle_hand_view_mode)
+	lock_button.pressed.connect(toggle_preview_lock)
+	clear_button.pressed.connect(clear_unlocked_preview_cards)
+	restart_button.pressed.connect(_on_restart_pressed)
+	quit_button.pressed.connect(_on_quit_pressed)
 
 	preview_offset = get_active_window_start()
+	play_button.pressed.connect(play_selected_cards)
+	discard_button.pressed.connect(discard_selected_cards)
+	linear_hand_container.custom_minimum_size = Vector2(760, 120)
+	circle_hand_container.custom_minimum_size = Vector2(540, 540)
 
-	# Temporary test sticker.
-	owned_stickers.append(VowelLoverSticker.new())
 
-	draw_to_hand()
-	update_grid_ui()
-	update_stage_ui()
+
+	start_grade()
+	await get_tree().process_frame
+	update_hand_ui()
 
 
 func _input(event):
@@ -198,12 +286,39 @@ func toggle_pause_menu():
 
 	if is_paused:
 		update_upgrade_viewer()
+		update_teacher_viewer()
+func get_teacher_modifier_text(teacher) -> String:
+	if teacher["stickers"].is_empty():
+		return "No modifier"
 
+	return teacher["description"]
+func _on_quit_pressed():
+	get_tree().quit()
+func update_teacher_viewer():
+	clear_container(teacher_list)
 
+	if teacher_order.is_empty():
+		return
+
+	for i in range(get_current_school()["grades"]):
+		var teacher = teacher_order[i % teacher_order.size()]
+		var grade_number = i + 1
+
+		var label = Label.new()
+
+		var prefix = "Grade " + str(grade_number) + ": "
+
+		if i == grade_index:
+			prefix = "▶ " + prefix
+
+		label.text = prefix + teacher["name"] + " - " + get_teacher_modifier_text(teacher)
+
+		teacher_list.add_child(label)
 func _on_resume_pressed():
 	is_paused = false
 	pause_menu.visible = false
-
+func _on_restart_pressed():
+	get_tree().reload_current_scene()
 
 func update_upgrade_viewer():
 	clear_container(upgrade_list)
@@ -234,7 +349,14 @@ func get_current_school():
 func get_current_grade_number():
 	return grade_index + 1
 
+func create_teacher_order():
+	teacher_order.clear()
 
+	for teacher in teacher_pool:
+		teacher_order.append(teacher)
+
+	teacher_order.shuffle()
+	
 func get_target_score():
 	var school = get_current_school()
 	return school["base_target"] + grade_index * school["target_growth"]
@@ -246,11 +368,18 @@ func get_grade_reward():
 
 
 func update_stage_ui():
-	stage_label.text = get_current_school()["name"] + " - Grade " + str(get_current_grade_number())
+	var teacher_text := ""
+
+	if current_teacher != null:
+		teacher_text = " | Teacher: " + current_teacher["name"]
+
+	stage_label.text = get_current_school()["name"] + " - Grade " + str(get_current_grade_number()) + teacher_text
 	money_label.text = "$" + str(money)
 	target_label.text = "Target: " + str(get_target_score())
-	hands_label.text = "Hands: " + str(hands_left)
+	hands_label.text = "Hands: " + str(hands_left) + " | Discards: " + str(discards_left)
 	score_label.text = "Score: " + str(total_score)
+	
+	hands_label.text = "Hands: " + str(hands_left) + " | Discards: " + str(discards_left) 
 
 
 func check_grade_result():
@@ -308,21 +437,37 @@ func start_grade():
 
 	gameplay_ui.visible = true
 	shop_panel.visible = false
-
+	discards_left = DISCARDS_PER_GRADE
 	total_score = 0
 	hands_left = HANDS_PER_GRADE
 	current_row = 0
 	current_col = 0
 
 	selected_cards.clear()
+	locked_cards.clear()
 	preview_offset = get_active_window_start()
 
 	create_grid()
+	apply_teacher_for_current_grade()
+
+	draw_to_hand()
 	update_grid_ui()
 	update_hand_ui()
 	update_stage_ui()
+	
+func apply_teacher_for_current_grade():
+	clear_teacher_modifiers()
 
+	if teacher_order.is_empty():
+		create_teacher_order()
 
+	var teacher_index = grade_index % teacher_order.size()
+	current_teacher = teacher_order[teacher_index]
+
+	for sticker_class in current_teacher["stickers"]:
+		teacher_stickers.append(sticker_class.new())
+
+	print("Teacher: ", current_teacher["name"])
 func reset_grade_stickers():
 	for sticker in owned_stickers:
 		if sticker.resets_each_grade:
@@ -346,20 +491,64 @@ func generate_shop():
 	clear_container(perma_shop)
 	clear_container(consume_shop)
 
-	shop_permanent_items = get_random_items(permanent_pool, 3)
+	shop_sticker_items = get_available_shop_stickers(3)
 	shop_consumable_items = get_random_items(consumable_pool, 4)
 
-	for item in shop_permanent_items:
+	for item in shop_sticker_items:
 		var button = make_shop_button(item)
-		button.pressed.connect(_on_permanent_item_pressed.bind(item, button))
+		button.pressed.connect(_on_sticker_item_pressed.bind(item, button))
 		perma_shop.add_child(button)
 
 	for item in shop_consumable_items:
 		var button = make_shop_button(item)
 		button.pressed.connect(_on_consumable_item_pressed.bind(item, button))
 		consume_shop.add_child(button)
+		
+func _on_sticker_item_pressed(item, button):
+	if money < item["cost"]:
+		await animate_cant_afford(button)
+		return
 
+	if has_owned_sticker_id(item["id"]):
+		button.disabled = true
+		return
 
+	money -= item["cost"]
+
+	var sticker = item["sticker"].new()
+	owned_stickers.append(sticker)
+	update_owned_permanent_ui()
+
+	update_stage_ui()
+
+	await animate_shop_purchase(button)
+
+	button.disabled = true
+	button.text = item["name"] + " - BOUGHT"
+
+	print("Bought sticker: ", item["name"])
+func get_available_shop_stickers(count: int) -> Array:
+	var available := []
+
+	for item in sticker_pool:
+		if !has_owned_sticker_id(item["id"]):
+			available.append(item)
+
+	available.shuffle()
+
+	var result := []
+
+	for i in range(min(count, available.size())):
+		result.append(available[i])
+
+	return result
+	
+func has_owned_sticker_id(id: String) -> bool:
+	for sticker in owned_stickers:
+		if sticker.sticker_id == id:
+			return true
+
+	return false
 func clear_container(container):
 	for child in container.get_children():
 		child.queue_free()
@@ -423,7 +612,6 @@ func _on_consumable_item_pressed(item, button):
 	button.disabled = true
 	button.text = item["name"] + " - BOUGHT"
 
-
 func update_owned_permanent_ui():
 	clear_container(permanent_item_bar)
 
@@ -431,6 +619,12 @@ func update_owned_permanent_ui():
 		var label = Label.new()
 		label.text = item["name"]
 		label.tooltip_text = item["description"]
+		permanent_item_bar.add_child(label)
+
+	for sticker in owned_stickers:
+		var label = Label.new()
+		label.text = sticker.sticker_name
+		label.tooltip_text = sticker.description
 		permanent_item_bar.add_child(label)
 
 
@@ -445,63 +639,138 @@ func _on_next_grade_pressed():
 # Deck / Hand
 # ============================================================
 
-func create_starting_deck():
-	deck.clear()
-
-	var letters = [
-		"A", "A", "A", "A",
-		"I", "I", "I", "I", 
-		"E", "E", "E", "E", "E", "E",
-		"R", "R", "R",
-		"T", "T", "T",
-		"O", "O", "O", "O",
-		"N", "N", "N",
-		"S", "S","S",
-		"L", "L",
-		"D", "D",
-		"U", "U",
-		"G", "M", "P", "B", "C", "F","H","J","K","Q","V","W","X","Y","Z",
-	]
-
-	var uid = 0
-
-	for l in letters:
-		deck.append({
-			"id": uid,
-			"letter": l
-		})
-		uid += 1
-
-	deck.shuffle()
-
-
-func draw_card():
-	if deck.is_empty():
-		reshuffle_discard()
-
-	if deck.is_empty():
-		return null
-
-	return deck.pop_back()
-
-
-func reshuffle_discard():
-	deck = discard.duplicate()
-	discard.clear()
-	deck.shuffle()
-
-
-func draw_to_hand():
-	while hand.size() < HAND_SIZE:
-		var card = draw_card()
-
-		if card == null:
-			break
-
-		hand.append(card)
+# ============================================================
+# Letter Distribution
+# ============================================================
+func toggle_hand_view_mode():
+	if hand_view_mode == HandViewMode.LINEAR:
+		hand_view_mode = HandViewMode.CIRCLE
+		circle_hand_container.custom_minimum_size = Vector2(540, 540)
+		hand_view_toggle_button.text = "View: Circle"
+	else:
+		hand_view_mode = HandViewMode.LINEAR
+		hand_view_toggle_button.text = "View: Linear"
+		circle_hand_container.custom_minimum_size = Vector2.ZERO
 
 	update_hand_ui()
+func get_current_letter_weights() -> Dictionary:
+	var weights = base_letter_weights.duplicate()
+	var board_counts := {}
 
+	for y in range(GRID_SIZE):
+		for x in range(GRID_SIZE):
+			var letter_state = grid[y][x]
+
+			if letter_state.is_blank():
+				continue
+
+			var letter = letter_state.letter
+
+			if is_vowel(letter):
+				continue
+
+			board_counts[letter] = board_counts.get(letter, 0) + 1
+
+	for letter in board_counts.keys():
+		if !weights.has(letter):
+			continue
+
+		var base_weight = base_letter_weights[letter]
+		var echo_bonus = base_weight * board_echo_strength * board_counts[letter]
+		var max_bonus = base_weight * MAX_BOARD_ECHO_MULTIPLIER
+
+		weights[letter] += min(echo_bonus, max_bonus)
+
+	return weights
+func discard_selected_cards():
+	if is_paused:
+		return
+
+	if game_phase != GamePhase.PLAYING:
+		return
+
+	if discards_left <= 0:
+		return
+
+	if selected_cards.is_empty():
+		return
+
+	var remaining_selected := []
+
+	for card in selected_cards:
+		if locked_cards.has(card):
+			remaining_selected.append(card)
+		else:
+			hand.erase(card)
+
+	selected_cards = remaining_selected
+
+	if !has_locked_cards():
+		preview_offset = get_active_window_start()
+
+	discards_left -= 1
+
+	draw_to_hand()
+	update_hand_ui()
+	update_stage_ui()
+	
+	
+func is_vowel(letter: String) -> bool:
+	return letter in ["A", "E", "I", "O", "U"]
+func draw_random_letter(hand_letter_counts := {}) -> String:
+	var weights = get_current_letter_weights()
+
+	for letter in hand_letter_counts.keys():
+		if !weights.has(letter):
+			continue
+
+		var count = hand_letter_counts[letter]
+
+		if count >= MAX_SAME_LETTER_IN_HAND:
+			weights[letter] = 0
+		else:
+			var penalty = 1.0 - HAND_DUPLICATE_PENALTY * count
+			penalty = max(penalty, MIN_DRAW_WEIGHT_MULTIPLIER)
+			weights[letter] *= penalty
+
+	var total_weight := 0.0
+
+	for value in weights.values():
+		total_weight += float(value)
+
+	if total_weight <= 0:
+		return "E"
+
+	var roll = randf() * total_weight
+	var running := 0.0
+
+	for letter in weights.keys():
+		running += float(weights[letter])
+
+		if roll <= running:
+			return letter
+
+	return "E"
+
+func draw_to_hand():
+	var hand_letter_counts := {}
+
+	for card in hand:
+		var letter = card["letter"]
+		hand_letter_counts[letter] = hand_letter_counts.get(letter, 0) + 1
+
+	while hand.size() < HAND_SIZE:
+		var letter = draw_random_letter(hand_letter_counts)
+
+		var card = {
+			"id": randi(),
+			"letter": letter
+		}
+
+		hand.append(card)
+		hand_letter_counts[letter] = hand_letter_counts.get(letter, 0) + 1
+
+	update_hand_ui()
 
 func toggle_select(card):
 	if is_paused:
@@ -513,7 +782,8 @@ func toggle_select(card):
 		if selected_cards.size() < MAX_SELECTED_CARDS:
 			selected_cards.append(card)
 
-	auto_center_preview()
+	if !has_locked_cards():
+		auto_center_preview()
 	update_hand_ui()
 
 
@@ -525,8 +795,14 @@ func _on_selected_card_pressed(card):
 	if is_paused:
 		return
 
+	if locked_cards.has(card):
+		return
+
 	selected_cards.erase(card)
-	auto_center_preview()
+
+	if !has_locked_cards():
+		auto_center_preview()
+
 	update_hand_ui()
 
 
@@ -702,7 +978,41 @@ func clear_drag_ghost():
 		drag_ghost.queue_free()
 		drag_ghost = null
 
+func has_locked_cards() -> bool:
+	return !locked_cards.is_empty()
 
+
+func is_card_locked(card) -> bool:
+	return locked_cards.has(card)
+
+func toggle_preview_lock():
+	if selected_cards.is_empty():
+		return
+
+	if has_locked_cards():
+		locked_cards.clear()
+		lock_button.text = "🔒"
+	else:
+		for card in selected_cards:
+			if !locked_cards.has(card):
+				locked_cards.append(card)
+
+		lock_button.text = "🔓"
+
+	update_hand_ui()
+func clear_unlocked_preview_cards():
+	var remaining := []
+
+	for card in selected_cards:
+		if locked_cards.has(card):
+			remaining.append(card)
+
+	selected_cards = remaining
+
+	if !has_locked_cards():
+		preview_offset = get_active_window_start()
+
+	update_hand_ui()
 # ============================================================
 # Play Hand
 # ============================================================
@@ -740,9 +1050,11 @@ func play_selected_cards():
 
 	for card in selected_cards:
 		hand.erase(card)
-		discard.append(card)
+
 
 	selected_cards.clear()
+	locked_cards.clear()
+	lock_button.text = "🔒"
 	preview_offset = get_active_window_start()
 
 	hands_left -= 1
@@ -1146,22 +1458,75 @@ func clear_teacher_modifiers():
 # ============================================================
 
 func update_hand_ui():
-	clear_container(hand_container)
+	clear_container(linear_hand_container)
+	clear_container(circle_hand_container)
 	clear_container(selected_container)
 
+	var use_circle = hand_view_mode == HandViewMode.CIRCLE
+
+	linear_hand_container.visible = !use_circle
+	circle_hand_container.visible = use_circle
+
+	var active_hand_container: Control
+
+	if use_circle:
+		active_hand_container = circle_hand_container
+	else:
+		active_hand_container = linear_hand_container
+
+	var visible_cards := []
+
 	for card in hand:
+		
+
+		visible_cards.append(card)
 		if selected_cards.has(card):
 			continue
+
+	for i in range(visible_cards.size()):
+		var card = visible_cards[i]
 
 		var card_ui = CARD_SCENE.instantiate()
 		card_ui.setup(card, false)
 		card_ui.pressed.connect(_on_card_pressed.bind(card))
+		if selected_cards.has(card):
+			card_ui.modulate = Color(1, 1, 1, 0.15)
+		else:
+			card_ui.modulate = Color(1, 1, 1, 1)
 
-		hand_container.add_child(card_ui)
+		active_hand_container.add_child(card_ui)
+
+		if use_circle:
+			position_card_in_circle(card_ui, active_hand_container, i, visible_cards.size())
+		else:
+			position_card_linear(card_ui, active_hand_container, i, visible_cards.size())
 
 	update_selected_preview_ui()
 
+func position_card_in_circle(card_ui: Control, container: Control, index: int, total: int):
+	var radius: float = 250.0
+	var center: Vector2 = container.size / 2.0
 
+	if total <= 1:
+		card_ui.position = center - card_ui.size / 2.0
+		card_ui.rotation = 0.0
+		return
+
+	var angle: float = -PI / 2.0 + TAU * float(index) / float(total)
+
+	var x: float = cos(angle) * radius
+	var y: float = sin(angle) * radius
+
+	card_ui.position = center + Vector2(x, y) - card_ui.size / 2.0
+	card_ui.rotation = 0.0
+func position_card_linear(card_ui: Control, container: Control, index: int, total: int):
+	var spacing: float = 76.0
+	var total_width: float = spacing * float(total - 1)
+	var start_x: float = container.size.x / 2.0 - total_width / 2.0
+	var y: float = container.size.y / 2.0 - card_ui.size.y / 2.0
+
+	card_ui.position = Vector2(start_x + float(index) * spacing, y)
+	card_ui.rotation = 0.0
 func update_selected_preview_ui():
 	clear_container(selected_container)
 
@@ -1174,7 +1539,7 @@ func update_selected_preview_ui():
 
 func create_preview_slot(slot_index, active_start):
 	var slot = PanelContainer.new()
-	slot.custom_minimum_size = Vector2(72, 96)
+	slot.custom_minimum_size = Vector2(72, 128)
 	slot.add_theme_stylebox_override("panel", make_preview_slot_style(slot_index, active_start))
 
 	var inner = CenterContainer.new()
@@ -1232,7 +1597,8 @@ func create_preview_card(card_index, is_active_slot):
 		card_ui.modulate = Color(1, 1, 1, 0.2)
 	elif !is_active_slot:
 		card_ui.modulate = Color(1, 1, 1, 0.45)
-
+	if locked_cards.has(card):
+		card_ui.modulate = Color(1.0, 0.9, 0.45, 1.0)
 	return card_ui
 
 
@@ -1402,8 +1768,7 @@ func animate_cant_afford(button):
 
 func save_game():
 	var data = {
-		"deck": deck,
-		"discard": discard,
+
 		"hand": hand,
 		"selected_cards": selected_cards,
 		"grid": serialize_grid(),
@@ -1432,8 +1797,7 @@ func load_game():
 	if json == null:
 		return
 
-	deck = json["deck"]
-	discard = json["discard"]
+
 	hand = json["hand"]
 	selected_cards = json.get("selected_cards", [])
 	grid = deserialize_grid(json.get("grid", []))
