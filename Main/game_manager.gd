@@ -27,8 +27,9 @@ const MIN_DRAW_WEIGHT_MULTIPLIER := 0.15
 # ============================================================
 
 #set to true for debug mode
-@export var debug_sticker_sandbox := false
-
+@export var debug_sticker_sandbox := true
+@export var debug_log_trigger_order := true
+var debug_trigger_event_index := 0
 var debug_trigger_frequency_totals := {}
 @export var debug_animation_speed := 8.0
 
@@ -38,8 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	PopularKidSticker,
-	#VowelLoverSticker,
+	GoodyTwoShoesSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -472,8 +472,8 @@ func check_grade_result():
 	if hands_left <= 0:
 		if can_hall_pass_grade():
 			complete_grade()
-	else:
-		fail_grade()
+		else:
+			fail_grade()
 
 func can_hall_pass_grade() -> bool:
 	for sticker in owned_stickers:
@@ -1427,6 +1427,8 @@ func score_combo(combo, pattern_id):
 
 	var final_score = calculate_score_from_data(data)
 
+	debug_log_combo_trigger(combo, pattern_id, data, final_score)
+
 	for letter_state in data["letters"]:
 		letter_state.record_trigger(pattern_id)
 		letter_state.apply_growth()
@@ -1653,7 +1655,39 @@ func reset_debug_sticker_sandbox_for_grade():
 	debug_letter_draw_index = 0
 	debug_played_rows = 0
 	debug_trigger_frequency_totals.clear()
-	
+	debug_trigger_event_index = 0
+func debug_log_combo_trigger(combo, pattern_id, data, final_score):
+	if !debug_sticker_sandbox:
+		return
+
+	if !debug_log_trigger_order:
+		return
+
+	debug_trigger_event_index += 1
+
+	print("\n=== TRIGGER EVENT ", debug_trigger_event_index, " ===")
+	print(
+		"word=", data["word"],
+		" pattern=", pattern_id,
+		" score=", final_score,
+		" effective_length=", data["effective_length"],
+		" final_multiplier=", data["final_multiplier"],
+		" flat_bonus=", data["flat_bonus"]
+	)
+
+	for entry in data["letter_scores"]:
+		var letter_state = entry["letter"]
+
+		print(
+			"  ",
+			letter_state.letter,
+			" mult_before=", letter_state.mult,
+			" growth=", letter_state.growth,
+			" base_mult=", entry["base_mult"],
+			" bonus_mult=", entry["bonus_mult"],
+			" entry_multiplier=", entry["multiplier"],
+			" triggers_before=", letter_state.patterns_this_hand.size()
+		)
 func add_debug_test_stickers():
 	owned_stickers.clear()
 
