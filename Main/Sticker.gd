@@ -6,14 +6,15 @@ var description := ""
 var sticker_id := "sticker"
 var resets_each_hand := false
 var resets_each_grade := true
+var game = null
 
 var affected_letter_ids := {}
-func prevents_hand_reset(letter_state) -> bool:
+func prevents_hand_reset(_letter_state) -> bool:
 	return false
 
-func prevents_grade_reset(letter_state) -> bool:
+func prevents_grade_reset(_letter_state) -> bool:
 	return false
-func modify_letter(letter_state):
+func modify_letter(_letter_state):
 	pass
 
 func modify_score_data(data):

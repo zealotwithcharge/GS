@@ -57,7 +57,7 @@ var hand_view_mode := HandViewMode.CIRCLE
 @onready var selected_container = $RootUI/GameplayUI/SelectedRowControls/SelectedContainer
 @onready var shift_left_button = $RootUI/GameplayUI/SelectedRowControls/ShiftLeftButton
 @onready var shift_right_button = $RootUI/GameplayUI/SelectedRowControls/ShiftRightButton
-@onready var hand_container = $RootUI/GameplayUI/HandContainer
+
 @onready var play_button = $RootUI/GameplayUI/HBoxContainer/PlayButton
 @onready var discard_button = $RootUI/GameplayUI/HBoxContainer/DiscardButton
 @onready var lock_button = $RootUI/GameplayUI/HBoxContainer/VBoxContainer/LockButton
@@ -188,7 +188,7 @@ var schools := [
 	{
 		"name": "Elementary School",
 		"grades": 5,
-		"base_target": 50,
+		"base_target": 500,
 		"target_growth": 75,
 		"reward": 5
 	},
@@ -254,7 +254,12 @@ func _ready():
 	clear_button.pressed.connect(clear_unlocked_preview_cards)
 	restart_button.pressed.connect(_on_restart_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
-
+	
+	#testing code for stickers
+	var test = PopularKidSticker.new()
+	test.game = self
+	owned_stickers.append(test)
+	
 	preview_offset = get_active_window_start()
 	play_button.pressed.connect(play_selected_cards)
 	discard_button.pressed.connect(discard_selected_cards)
@@ -465,7 +470,10 @@ func apply_teacher_for_current_grade():
 	current_teacher = teacher_order[teacher_index]
 
 	for sticker_class in current_teacher["stickers"]:
-		teacher_stickers.append(sticker_class.new())
+		var sticker = sticker_class.new()
+		sticker.game = self
+		teacher_stickers.append(sticker)
+
 
 	print("Teacher: ", current_teacher["name"])
 func reset_grade_stickers():
@@ -516,6 +524,7 @@ func _on_sticker_item_pressed(item, button):
 	money -= item["cost"]
 
 	var sticker = item["sticker"].new()
+	sticker.game = self
 	owned_stickers.append(sticker)
 	update_owned_permanent_ui()
 
