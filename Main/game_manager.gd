@@ -215,6 +215,13 @@ var sticker_pool := [
 		"cost": 8,
 		"description": "Double the growth of vowels.",
 		"sticker": VowelLoverSticker
+	},
+	{
+		"id": "hall_pass",
+		"name": "Hall Pass",
+		"cost": 8,
+		"description": "Pass the grade if you have at least 50% of the required score",
+		"sticker": HallPassSticker
 	}
 ]
 var shop_sticker_items := []
@@ -393,8 +400,17 @@ func check_grade_result():
 		return
 
 	if hands_left <= 0:
+		if can_hall_pass_grade():
+			complete_grade()
+	else:
 		fail_grade()
 
+func can_hall_pass_grade() -> bool:
+	for sticker in owned_stickers:
+		if sticker.has_method("can_pass_grade"):
+			if sticker.can_pass_grade(total_score, get_target_score()):
+				return true
+	return false
 
 func complete_grade():
 	clear_teacher_modifiers()
