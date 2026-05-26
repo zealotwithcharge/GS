@@ -31,7 +31,7 @@ const MIN_DRAW_WEIGHT_MULTIPLIER := 0.15
 @export var debug_log_trigger_order := true
 var debug_trigger_event_index := 0
 var debug_trigger_frequency_totals := {}
-@export var debug_animation_speed := 2.0
+@export var debug_animation_speed := 8.0
 
 @export var debug_auto_play_hands := true
 @export var debug_auto_select_next_row := true
@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	OmniVowelSticker
+	TooCoolForSchoolSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -296,6 +296,13 @@ var sticker_pool := [
 		"description": "All vowels become @ and count as any vowel. Required score is increased by 50%.",
 		"sticker": OmniVowelSticker
 	},
+	{
+	"id": "too_cool_for_school",
+	"name": "Too Cool For School",
+	"cost": 7,
+	"description": "D's and F's don't lose multipliers.",
+	"sticker": TooCoolForSchoolSticker
+},
 ]
 var shop_sticker_items := []
 var consumable_pool := [
