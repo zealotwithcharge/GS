@@ -31,7 +31,7 @@ const MIN_DRAW_WEIGHT_MULTIPLIER := 0.15
 @export var debug_log_trigger_order := true
 var debug_trigger_event_index := 0
 var debug_trigger_frequency_totals := {}
-@export var debug_animation_speed := 8.0
+@export var debug_animation_speed := 2.0
 
 @export var debug_auto_play_hands := true
 @export var debug_auto_select_next_row := true
@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	GoodyTwoShoesSticker
+	OmniVowelSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -276,12 +276,26 @@ var sticker_pool := [
 		"sticker": VowelLoverSticker
 	},
 	{
-		"id": "hall_pass",
-		"name": "Hall Pass",
+		"id": "popular_kid",
+		"name": "The Popular Kid",
 		"cost": 8,
-		"description": "Pass the grade if you have at least 50% of the required score",
-		"sticker": HallPassSticker
-	}
+		"description": "Gain $4 every time a letter is triggered for a 5th time in a hand.",
+		"sticker": PopularKidSticker
+	},
+	{
+		"id": "goody_two_shoes",
+		"name": "Goody Two Shoes",
+		"cost": 7,
+		"description": "A's multiplier only resets to 0 when B, C, D or F is played.",
+		"sticker": GoodyTwoShoesSticker
+	},
+	{
+		"id": "omni_vowel",
+		"name": "The Omni-Vowel",
+		"cost": 12,
+		"description": "All vowels become @ and count as any vowel. Required score is increased by 50%.",
+		"sticker": OmniVowelSticker
+	},
 ]
 var shop_sticker_items := []
 var consumable_pool := [
@@ -439,11 +453,17 @@ func create_teacher_order():
 	teacher_order.shuffle()
 	
 func get_target_score():
-	if debug_sticker_sandbox:
-		return debug_impossible_target_score
-
 	var school = get_current_school()
-	return school["base_target"] + grade_index * school["target_growth"]
+	var target = school["base_target"] + grade_index * school["target_growth"]
+
+	for sticker in get_active_stickers():
+		if sticker.has_method("modify_target_score"):
+			target = sticker.modify_target_score(target)
+
+	if debug_sticker_sandbox:
+		target += debug_impossible_target_score
+
+	return target
 
 
 func get_grade_reward():
@@ -1404,23 +1424,136 @@ func score_lines_by_length(lines, length, direction):
 			if combo_has_blank(combo):
 				continue
 
-			var word = combo_to_string(combo)
+			var word = combo_to_string(combo).to_lower()
+			var pattern_id = direction + str(length)
+
+			if word.contains("@"):
+				var expanded_words = get_vowel_expanded_words(word)
+
+				for expanded_word in expanded_words:
+					if !is_valid_combo(expanded_word):
+						continue
+
+					score += await trigger_combo_as_word(combo, pattern_id, expanded_word, true)
+
+				continue
 
 			if is_valid_combo(word):
-				var pattern_id = direction + str(length)
-				var combo_score = score_combo(combo, pattern_id)
-				score += combo_score
-
-				print(word, " scored ", combo_score)
-
-				await animate_combo(combo)
-				await show_combo_score(combo, combo_score)
+				score += await trigger_combo(combo, pattern_id, true, word)
 
 	return score
+func trigger_combo_as_word(combo, pattern_id, word: String, animate := true) -> int:
+	var original_letters := []
 
+	for i in range(combo.size()):
+		var pos = combo[i]
+		var y = pos[0]
+		var x = pos[1]
+		var letter_state = grid[y][x]
 
-func score_combo(combo, pattern_id):
+		original_letters.append(letter_state.letter)
+		letter_state.letter = word.substr(i, 1).to_upper()
+
+	update_grid_ui()
+
+	var score = await trigger_combo(combo, pattern_id, animate, word)
+
+	for i in range(combo.size()):
+		var pos = combo[i]
+		var y = pos[0]
+		var x = pos[1]
+		grid[y][x].letter = original_letters[i]
+
+	update_grid_ui()
+
+	return score
+func trigger_combo(combo, pattern_id, animate := true, trigger_word := "") -> int:
+	var word = trigger_word
+
+	if word == "":
+		word = combo_to_string(combo)
+
+	var combo_score = score_combo(combo, pattern_id, word)
+
+	print(word, " scored ", combo_score)
+
+	if animate:
+		await animate_combo(combo)
+		await show_combo_score(combo, combo_score)
+	else:
+		total_score += combo_score
+		score_label.text = "Score: " + str(total_score)
+
+	for sticker in get_active_stickers():
+		if sticker.has_method("after_combo_triggered"):
+			await sticker.after_combo_triggered(combo, pattern_id, word, combo_score)
+
+	return combo_score
+func debug_log_combo_trigger(combo, pattern_id, data, final_score):
+	if !debug_sticker_sandbox:
+		return
+
+	if !debug_log_trigger_order:
+		return
+
+	debug_trigger_event_index += 1
+
+	print("\n=== TRIGGER EVENT ", debug_trigger_event_index, " ===")
+	print(
+		"word=", data["word"],
+		" pattern=", pattern_id,
+		" score=", final_score,
+		" effective_length=", data["effective_length"],
+		" final_multiplier=", data["final_multiplier"],
+		" flat_bonus=", data["flat_bonus"]
+	)
+
+	for entry in data["letter_scores"]:
+		var letter_state = entry["letter"]
+
+		print(
+			"  ",
+			letter_state.letter,
+			" mult_before=", letter_state.mult,
+			" growth=", letter_state.growth,
+			" base_mult=", entry["base_mult"],
+			" bonus_mult=", entry["bonus_mult"],
+			" entry_multiplier=", entry["multiplier"],
+			" triggers_before=", letter_state.patterns_this_hand.size()
+		)
+func get_vowel_expanded_words(word: String) -> Array:
+	var results := [word]
+
+	while true:
+		var expanded := false
+		var next_results := []
+
+		for candidate in results:
+			var index = candidate.find("@")
+
+			if index == -1:
+				next_results.append(candidate)
+				continue
+
+			expanded = true
+
+			for vowel in ["a", "e", "i", "o", "u"]:
+				var new_word = candidate
+				new_word[index] = vowel
+				next_results.append(new_word)
+
+		results = next_results
+
+		if !expanded:
+			break
+
+	return results
+	
+func score_combo(combo, pattern_id, trigger_word := ""):
 	var data = build_score_data(combo, pattern_id)
+
+	if trigger_word != "":
+		data["word"] = trigger_word
 
 	for sticker in get_active_stickers():
 		data = sticker.modify_score_data(data)
@@ -1428,6 +1561,7 @@ func score_combo(combo, pattern_id):
 	var final_score = calculate_score_from_data(data)
 
 	debug_log_combo_trigger(combo, pattern_id, data, final_score)
+
 
 	for letter_state in data["letters"]:
 		letter_state.record_trigger(pattern_id)
@@ -1656,38 +1790,7 @@ func reset_debug_sticker_sandbox_for_grade():
 	debug_played_rows = 0
 	debug_trigger_frequency_totals.clear()
 	debug_trigger_event_index = 0
-func debug_log_combo_trigger(combo, pattern_id, data, final_score):
-	if !debug_sticker_sandbox:
-		return
 
-	if !debug_log_trigger_order:
-		return
-
-	debug_trigger_event_index += 1
-
-	print("\n=== TRIGGER EVENT ", debug_trigger_event_index, " ===")
-	print(
-		"word=", data["word"],
-		" pattern=", pattern_id,
-		" score=", final_score,
-		" effective_length=", data["effective_length"],
-		" final_multiplier=", data["final_multiplier"],
-		" flat_bonus=", data["flat_bonus"]
-	)
-
-	for entry in data["letter_scores"]:
-		var letter_state = entry["letter"]
-
-		print(
-			"  ",
-			letter_state.letter,
-			" mult_before=", letter_state.mult,
-			" growth=", letter_state.growth,
-			" base_mult=", entry["base_mult"],
-			" bonus_mult=", entry["bonus_mult"],
-			" entry_multiplier=", entry["multiplier"],
-			" triggers_before=", letter_state.patterns_this_hand.size()
-		)
 func add_debug_test_stickers():
 	owned_stickers.clear()
 

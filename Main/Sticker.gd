@@ -29,3 +29,5 @@ func mark_affected(letter_state):
 func reset():
 	affected_letter_ids.clear()
 	
+func after_combo_triggered(_combo, _pattern_id, _word, _score):
+	pass

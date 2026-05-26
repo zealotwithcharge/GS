@@ -3,7 +3,7 @@ extends Sticker
 
 func _init():
 	sticker_name = "The Popular Kid"
-	description = "Gain $4 every time a letter is triggered more than 4 times in a hand"
+	description = "Gain $4 every time a letter is triggered for a 5th times in a hand"
 
 
 func modify_score_data(data: Dictionary):
