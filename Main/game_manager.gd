@@ -20,6 +20,62 @@ const LESSON_IDS := ["H3", "H4", "H5", "V3", "V4", "V5", "D3", "D4", "D5"]
 const HAND_DUPLICATE_PENALTY := 0.35
 const MIN_DRAW_WEIGHT_MULTIPLIER := 0.15
 
+
+
+# ============================================================
+# Debug Sticker Sandbox
+# ============================================================
+
+#set to true for debug mode
+@export var debug_sticker_sandbox := false
+
+var debug_trigger_frequency_totals := {}
+@export var debug_animation_speed := 8.0
+
+@export var debug_auto_play_hands := true
+@export var debug_auto_select_next_row := true
+@export var debug_add_test_stickers := true
+@export var debug_impossible_target_score := 999999999
+# CHANGE THIS TO TEST DIFFERENT STICKERS
+var debug_test_stickers = [
+	PopularKidSticker,
+	#VowelLoverSticker,
+]
+# CHANGE THIS TO CONTROL VALID DEBUG WORDS
+var debug_dictionary_words := [
+	"lmn",
+	"mno",
+	"klmn",
+	"lmno",
+	"klmno",
+
+	"kpu",
+	"fkpu",
+
+	"hmrw",
+	"chmrw",
+	"ejoty",
+
+	"gms",
+	"bhnt",
+	"cio",
+	"hlp",
+	"dhlp",
+
+	"eim",
+	"eimq",
+	"imqu",
+	"eimqu"
+]
+var debug_draw_order := [
+	"A","B","C","D","E",
+	"F","G","H","I","J",
+	"K","L","M","N","O",
+	"P","Q","R","S","T",
+	"U","V","W","X","Y"
+]
+
+var debug_draw_index := 0
 enum GamePhase {
 	PLAYING,
 	SHOP,
@@ -145,6 +201,9 @@ var drag_start_mouse_pos := Vector2.ZERO
 var is_dragging_preview_card := false
 var drag_ghost = null
 
+var debug_letter_draw_index := 0
+var debug_played_rows := 0
+
 
 # ============================================================
 # Data
@@ -255,10 +314,10 @@ func _ready():
 	restart_button.pressed.connect(_on_restart_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	
-	#testing code for stickers
-	var test = PopularKidSticker.new()
-	test.game = self
-	owned_stickers.append(test)
+	if debug_sticker_sandbox:
+		setup_debug_sticker_sandbox()
+
+		restart_button.text = "Debug: Open Shop"
 	
 	preview_offset = get_active_window_start()
 	play_button.pressed.connect(play_selected_cards)
@@ -271,6 +330,9 @@ func _ready():
 	start_grade()
 	await get_tree().process_frame
 	update_hand_ui()
+
+	if debug_sticker_sandbox and debug_auto_play_hands:
+		call_deferred("debug_play_all_hands")
 
 
 func _input(event):
@@ -322,7 +384,14 @@ func update_teacher_viewer():
 func _on_resume_pressed():
 	is_paused = false
 	pause_menu.visible = false
+	
 func _on_restart_pressed():
+	if debug_sticker_sandbox:
+		is_paused = false
+		pause_menu.visible = false
+		open_shop()
+		return
+
 	get_tree().reload_current_scene()
 
 func update_upgrade_viewer():
@@ -363,6 +432,9 @@ func create_teacher_order():
 	teacher_order.shuffle()
 	
 func get_target_score():
+	if debug_sticker_sandbox:
+		return debug_impossible_target_score
+
 	var school = get_current_school()
 	return school["base_target"] + grade_index * school["target_growth"]
 
@@ -383,8 +455,6 @@ func update_stage_ui():
 	target_label.text = "Target: " + str(get_target_score())
 	hands_label.text = "Hands: " + str(hands_left) + " | Discards: " + str(discards_left)
 	score_label.text = "Score: " + str(total_score)
-	
-	hands_label.text = "Hands: " + str(hands_left) + " | Discards: " + str(discards_left) 
 
 
 func check_grade_result():
@@ -451,6 +521,9 @@ func start_grade():
 	selected_cards.clear()
 	locked_cards.clear()
 	preview_offset = get_active_window_start()
+
+	if debug_sticker_sandbox:
+		reset_debug_sticker_sandbox_for_grade()
 
 	create_grid()
 	apply_teacher_for_current_grade()
@@ -727,6 +800,9 @@ func discard_selected_cards():
 func is_vowel(letter: String) -> bool:
 	return letter in ["A", "E", "I", "O", "U"]
 func draw_random_letter(hand_letter_counts := {}) -> String:
+	if debug_sticker_sandbox:
+		return draw_debug_letter()
+
 	var weights = get_current_letter_weights()
 
 	for letter in hand_letter_counts.keys():
@@ -1034,7 +1110,10 @@ func play_selected_cards():
 		return
 
 	if selected_cards.is_empty():
-		return
+		if debug_sticker_sandbox and debug_auto_select_next_row:
+			debug_select_next_row_cards()
+		else:
+			return
 
 	if hands_left <= 0:
 		return
@@ -1073,8 +1152,10 @@ func play_selected_cards():
 	update_stage_ui()
 
 	await score_grid()
-
+	
+	print_debug_trigger_summary()
 	reset_letters_after_hand()
+	reset_hand_stickers()
 	check_grade_result()
 	update_stage_ui()
 
@@ -1435,6 +1516,16 @@ func all_same_letter(word: String) -> bool:
 
 
 func load_dictionary():
+	dictionary.clear()
+
+	if debug_sticker_sandbox:
+		for word in debug_dictionary_words:
+			dictionary[word.to_lower()] = true
+
+		print("=== DEBUG DICTIONARY LOADED ===")
+		print(dictionary.keys())
+		return
+
 	var file = FileAccess.open("res://enable1.txt", FileAccess.READ)
 
 	if file == null:
@@ -1446,7 +1537,73 @@ func load_dictionary():
 
 		if word != "":
 			dictionary[word] = true
+func print_debug_trigger_summary():
+	if !debug_sticker_sandbox:
+		return
 
+	var counts := {}
+	var final_mults := {}
+
+	for y in range(GRID_SIZE):
+		for x in range(GRID_SIZE):
+			var letter_state = grid[y][x]
+
+			if letter_state.is_blank():
+				continue
+
+			var letter = letter_state.letter
+			counts[letter] = counts.get(letter, 0) + letter_state.patterns_this_hand.size()
+			final_mults[letter] = letter_state.mult
+
+	print("=== DEBUG TRIGGER SUMMARY ===")
+
+	var letters = final_mults.keys()
+	letters.sort()
+
+	var frequency_buckets := {}
+	
+	for letter in letters:
+		var trigger_count = counts.get(letter, 0)
+
+		print(
+			letter,
+			": triggers=", trigger_count,
+			" final_mult=", final_mults[letter]
+		)
+
+		frequency_buckets[trigger_count] = frequency_buckets.get(trigger_count, 0) + 1
+	for trigger_count in frequency_buckets.keys():
+		debug_trigger_frequency_totals[trigger_count] = debug_trigger_frequency_totals.get(trigger_count, 0) + frequency_buckets[trigger_count]
+	print("\n=== TRIGGER FREQUENCY DISTRIBUTION ===")
+
+	var bucket_keys = frequency_buckets.keys()
+	bucket_keys.sort()
+	bucket_keys.reverse()
+
+	for trigger_count in bucket_keys:
+		print(
+			frequency_buckets[trigger_count],
+			" letters triggered ",
+			trigger_count,
+			" times"
+		)
+
+
+
+	
+func print_debug_final_trigger_summary():
+	if !debug_sticker_sandbox:
+		return
+
+	print("\n=== FINAL 5-HAND TRIGGER FREQUENCY SUMMARY ===")
+
+	for trigger_count in [12,11,10,9,8,7,6, 5, 4,3,2,1,0]:
+		print(
+			debug_trigger_frequency_totals.get(trigger_count, 0),
+			" total letter-results triggered ",
+			trigger_count,
+			" times"
+		)
 func get_active_stickers() -> Array:
 	return owned_stickers + teacher_stickers
 
@@ -1461,6 +1618,178 @@ func clear_teacher_modifiers():
 		sticker.reset()
 
 	teacher_stickers.clear()
+
+
+# ============================================================
+# Debug Sticker Sandbox
+# ============================================================
+
+func setup_debug_sticker_sandbox():
+	print("DEBUG STICKER SANDBOX ENABLED")
+	randomize()
+
+	if debug_add_test_stickers:
+		add_debug_test_stickers()
+
+	update_owned_permanent_ui()
+
+func reset_debug_sticker_sandbox_for_grade():
+	debug_letter_draw_index = 0
+	debug_played_rows = 0
+	debug_trigger_frequency_totals.clear()
+	
+func add_debug_test_stickers():
+	owned_stickers.clear()
+
+	setup_debug_stickers()
+func setup_debug_stickers():
+	if !debug_sticker_sandbox:
+		return
+
+	for sticker_class in debug_test_stickers:
+		var sticker = sticker_class.new()
+		sticker.game = self
+		owned_stickers.append(sticker)
+
+	print("=== DEBUG STICKER SANDBOX ENABLED ===")
+func draw_debug_letter() -> String:
+	var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXY"
+	var letter = alphabet.substr(debug_letter_draw_index % alphabet.length(), 1)
+	debug_letter_draw_index += 1
+	return letter
+
+
+func debug_play_all_hands():
+	while debug_sticker_sandbox and game_phase == GamePhase.PLAYING and hands_left > 0 and debug_played_rows < GRID_SIZE:
+		await get_tree().create_timer(0.15).timeout
+		await play_selected_cards()
+
+	print_debug_final_trigger_summary()
+
+func debug_select_next_row_cards():
+	if debug_played_rows >= GRID_SIZE:
+		return
+
+	var row_start = debug_played_rows * GRID_SIZE
+	var target_letters := []
+
+	for i in range(GRID_PLACE_SIZE):
+		target_letters.append(char(65 + row_start + i))
+
+	selected_cards.clear()
+
+	for target_letter in target_letters:
+		var card = find_first_unselected_card_with_letter(target_letter)
+
+		if card != null:
+			selected_cards.append(card)
+
+	if selected_cards.size() == GRID_PLACE_SIZE:
+		debug_played_rows += 1
+		auto_center_preview()
+		update_hand_ui()
+	else:
+		push_warning("Debug sandbox could not auto-select row " + str(debug_played_rows + 1) + ". Needed: " + str(target_letters))
+
+
+func find_first_unselected_card_with_letter(letter: String):
+	for card in hand:
+		if selected_cards.has(card):
+			continue
+
+		if card["letter"] == letter:
+			return card
+
+	return null
+
+
+func load_debug_dictionary():
+	dictionary.clear()
+
+	var debug_grid := [
+		["A", "B", "C", "D", "E"],
+		["F", "G", "H", "I", "J"],
+		["K", "L", "M", "N", "O"],
+		["P", "Q", "R", "S", "T"],
+		["U", "V", "W", "X", "Y"]
+	]
+
+	add_debug_words_from_lines(debug_grid, "H")
+	add_debug_words_from_lines(transpose_debug_grid(debug_grid), "V")
+	add_debug_words_from_lines(get_debug_diagonal_letter_lines(debug_grid), "D")
+
+	# Long-word checks still use the real dictionary path, so include a few
+	# deterministic long test words too.
+	dictionary["abcdef"] = true
+	dictionary["abcdefg"] = true
+	dictionary["abcdefghi"] = true
+
+	print("Loaded debug dictionary words: ", dictionary.size())
+
+
+func add_debug_words_from_lines(lines: Array, _direction: String):
+	for line in lines:
+		for length in range(3, min(GRID_SIZE, line.size()) + 1):
+			for start in range(0, line.size() - length + 1):
+				var word := ""
+
+				for i in range(start, start + length):
+					word += line[i]
+
+				dictionary[word.to_lower()] = true
+
+
+func transpose_debug_grid(source_grid: Array) -> Array:
+	var result := []
+
+	for x in range(GRID_SIZE):
+		var line := []
+
+		for y in range(GRID_SIZE):
+			line.append(source_grid[y][x])
+
+		result.append(line)
+
+	return result
+
+
+func get_debug_diagonal_letter_lines(source_grid: Array) -> Array:
+	var lines := []
+
+	for start_x in range(GRID_SIZE):
+		lines.append(make_debug_letter_line(source_grid, 0, start_x, 1, 1))
+
+	for start_y in range(1, GRID_SIZE):
+		lines.append(make_debug_letter_line(source_grid, start_y, 0, 1, 1))
+
+	for start_x in range(GRID_SIZE):
+		lines.append(make_debug_letter_line(source_grid, 0, start_x, 1, -1))
+
+	for start_y in range(1, GRID_SIZE):
+		lines.append(make_debug_letter_line(source_grid, start_y, GRID_SIZE - 1, 1, -1))
+
+	return lines
+
+
+func make_debug_letter_line(source_grid: Array, start_y: int, start_x: int, dy: int, dx: int) -> Array:
+	var line := []
+	var y := start_y
+	var x := start_x
+
+	while y >= 0 and y < GRID_SIZE and x >= 0 and x < GRID_SIZE:
+		line.append(source_grid[y][x])
+		y += dy
+		x += dx
+
+	return line
+
+
+func reset_hand_stickers():
+	for sticker in get_active_stickers():
+		if sticker.resets_each_hand:
+			sticker.reset()
+func build_debug_dictionary():
+	pass
 
 # ============================================================
 # UI Rendering
@@ -1486,11 +1815,7 @@ func update_hand_ui():
 	var visible_cards := []
 
 	for card in hand:
-		
-
 		visible_cards.append(card)
-		if selected_cards.has(card):
-			continue
 
 	for i in range(visible_cards.size()):
 		var card = visible_cards[i]
@@ -1566,7 +1891,7 @@ func create_preview_slot(slot_index, active_start):
 func make_preview_slot_style(slot_index, active_start):
 	var style = StyleBoxFlat.new()
 
-	style.bg_color = Color(1, 1, 1, 0.04)
+	style.bg_color = Color(1, 1, 1, 0.05)
 	style.border_width_left = 1
 	style.border_width_top = 1
 	style.border_width_right = 1
@@ -1578,7 +1903,7 @@ func make_preview_slot_style(slot_index, active_start):
 	style.corner_radius_bottom_right = 8
 
 	if is_active_preview_slot(slot_index, active_start):
-		style.bg_color = Color(1, 1, 0.85, 0.12)
+		style.bg_color = Color(1, 1, 0.85, 0.13)
 		style.border_width_left = 3
 		style.border_width_top = 3
 		style.border_width_right = 3
@@ -1656,12 +1981,12 @@ func animate_cell(label):
 	label.rotation_degrees = 0
 
 	var tween = create_tween()
-	tween.tween_property(label, "position:y", -12, 0.08)
-	tween.tween_property(label, "rotation_degrees", -8, 0.04)
-	tween.tween_property(label, "rotation_degrees", 8, 0.04)
-	tween.tween_property(label, "rotation_degrees", -5, 0.04)
-	tween.tween_property(label, "rotation_degrees", 0, 0.04)
-	tween.tween_property(label, "position:y", 0, 0.12)
+	tween.tween_property(label, "position:y", -12, anim_time(0.08))
+	tween.tween_property(label, "rotation_degrees", -8, anim_time(0.04))
+	tween.tween_property(label, "rotation_degrees", 8, anim_time(0.04))
+	tween.tween_property(label, "rotation_degrees", -5, anim_time(0.04))
+	tween.tween_property(label, "rotation_degrees", 0, anim_time(0.04))
+	tween.tween_property(label, "position:y", 0, anim_time(0.12))
 
 	return tween
 
@@ -1679,11 +2004,11 @@ func show_combo_score(combo, combo_score):
 	add_child(floating_label)
 
 	var tween = create_tween()
-	tween.tween_property(floating_label, "scale", Vector2(1.3, 1.3), 0.08)
-	tween.tween_property(floating_label, "scale", Vector2(1.0, 1.0), 0.08)
-	tween.tween_property(floating_label, "global_position", end_pos, 0.35)
-	tween.parallel().tween_property(floating_label, "modulate:a", 0.0, 0.25)
-	tween.parallel().tween_property(floating_label, "scale", Vector2(0.4, 0.4), 0.25)
+	tween.tween_property(floating_label, "scale", Vector2(1.3, 1.3), anim_time(0.08))
+	tween.tween_property(floating_label, "scale", Vector2(1.0, 1.0), anim_time(0.08))
+	tween.tween_property(floating_label, "global_position", end_pos, anim_time(0.35))
+	tween.parallel().tween_property(floating_label, "modulate:a", 0.0, anim_time(0.25))
+	tween.parallel().tween_property(floating_label, "scale", Vector2(0.4, 0.4), anim_time(0.25))
 
 	await tween.finished
 
@@ -1724,13 +2049,13 @@ func show_long_word_score(word, bonus):
 	label.global_position = viewport_size / 2 - Vector2(120, 40)
 
 	var tween = create_tween()
-	tween.tween_property(label, "modulate:a", 1.0, 0.12)
-	tween.parallel().tween_property(label, "scale", Vector2(1.2, 1.2), 0.18)
-	tween.tween_property(label, "scale", Vector2(1.0, 1.0), 0.08)
-	tween.tween_interval(0.35)
-	tween.tween_property(label, "global_position", score_label.global_position + score_label.size / 2, 0.35)
-	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.25)
-	tween.parallel().tween_property(label, "scale", Vector2(0.3, 0.3), 0.25)
+	tween.tween_property(label, "modulate:a", 1.0, anim_time(0.12))
+	tween.parallel().tween_property(label, "scale", Vector2(1.2, 1.2), anim_time(0.18))
+	tween.tween_property(label, "scale", Vector2(1.0, 1.0), anim_time(0.08))
+	tween.tween_interval(anim_time(0.35))
+	tween.tween_property(label, "global_position", score_label.global_position + score_label.size / 2, anim_time(0.35))
+	tween.parallel().tween_property(label, "modulate:a", 0.0, anim_time(0.25))
+	tween.parallel().tween_property(label, "scale", Vector2(0.3, 0.3), anim_time(0.25))
 
 	await tween.finished
 
@@ -1740,8 +2065,8 @@ func show_long_word_score(word, bonus):
 
 func animate_score_label_bump():
 	var bump = create_tween()
-	bump.tween_property(score_label, "scale", Vector2(1.2, 1.2), 0.08)
-	bump.tween_property(score_label, "scale", Vector2(1.0, 1.0), 0.08)
+	bump.tween_property(score_label, "scale", Vector2(1.2, 1.2), anim_time(0.08))
+	bump.tween_property(score_label, "scale", Vector2(1.0, 1.0), anim_time(0.08))
 
 
 func animate_shop_purchase(button):
@@ -1749,9 +2074,9 @@ func animate_shop_purchase(button):
 	var original_modulate = button.modulate
 
 	var tween = create_tween()
-	tween.tween_property(button, "scale", original_scale * 1.15, 0.08)
-	tween.tween_property(button, "scale", original_scale, 0.08)
-	tween.parallel().tween_property(button, "modulate:a", 0.45, 0.15)
+	tween.tween_property(button, "scale", original_scale * 1.15, anim_time(0.08))
+	tween.tween_property(button, "scale", original_scale, anim_time(0.08))
+	tween.parallel().tween_property(button, "modulate:a", 0.45, anim_time(0.15))
 
 	await tween.finished
 
@@ -1762,14 +2087,18 @@ func animate_cant_afford(button):
 	var original_pos = button.position
 
 	var tween = create_tween()
-	tween.tween_property(button, "position:x", original_pos.x - 8, 0.04)
-	tween.tween_property(button, "position:x", original_pos.x + 8, 0.04)
-	tween.tween_property(button, "position:x", original_pos.x - 5, 0.04)
-	tween.tween_property(button, "position:x", original_pos.x + 5, 0.04)
-	tween.tween_property(button, "position:x", original_pos.x, 0.04)
+	tween.tween_property(button, "position:x", original_pos.x - 8, anim_time(0.04))
+	tween.tween_property(button, "position:x", original_pos.x + 8, anim_time(0.04))
+	tween.tween_property(button, "position:x", original_pos.x - 5, anim_time(0.04))
+	tween.tween_property(button, "position:x", original_pos.x + 5, anim_time(0.04))
+	tween.tween_property(button, "position:x", original_pos.x, anim_time(0.04))
 
 	await tween.finished
+func anim_time(seconds: float) -> float:
+	if debug_sticker_sandbox:
+		return seconds / debug_animation_speed
 
+	return seconds
 
 # ============================================================
 # Save / Load
