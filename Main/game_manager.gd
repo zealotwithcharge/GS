@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	PencilSharpenerSticker
+	PalindromeSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -308,6 +308,24 @@ var sticker_pool := [
 	"cost": 8,
 	"description": "You need one less letter to get the long word bonus.",
 	"sticker": PencilSharpenerSticker
+},{
+	"id": "check",
+	"name": "Check!",
+	"cost": 8,
+	"description": "If a letter scores in two diagonals, gain $4.",
+	"sticker": CheckSticker
+},{
+	"id": "show_off",
+	"name": "Show Off!",
+	"cost": 8,
+	"description": "Long word bonus gives 5% more of needed score.",
+	"sticker": ShowOffSticker
+},{
+	"id": "palindrome",
+	"name": "Palindrome",
+	"cost": 10,
+	"description": "All palindromes trigger 4 times.",
+	"sticker": PalindromeSticker
 },
 ]
 var shop_sticker_items := []
@@ -1243,19 +1261,21 @@ func score_long_word_bonus():
 	var word = get_selected_word()
 	var length = word.length()
 
-
-
 	if !dictionary.has(word.to_lower()):
 		return
 
 	var bonus = get_long_word_bonus(length)
+
+	if has_sticker_id("show_off"):
+		bonus += int(get_target_score() * 0.05)
+
 	await show_long_word_score(word, bonus)
 
 	total_score += bonus
 	score_label.text = "Score: " + str(total_score)
-
 func get_long_word_bonus(length):
 	var target = get_target_score()
+
 
 	match length:
 		5:
@@ -1490,7 +1510,7 @@ func trigger_combo_as_word(combo, pattern_id, word: String, animate := true) -> 
 	update_grid_ui()
 
 	return score
-func trigger_combo(combo, pattern_id, animate := true, trigger_word := "") -> int:
+func trigger_combo(combo, pattern_id, animate := true, trigger_word := "", allow_after_triggers := true) -> int:
 	var word = trigger_word
 
 	if word == "":
@@ -1507,9 +1527,10 @@ func trigger_combo(combo, pattern_id, animate := true, trigger_word := "") -> in
 		total_score += combo_score
 		score_label.text = "Score: " + str(total_score)
 
-	for sticker in get_active_stickers():
-		if sticker.has_method("after_combo_triggered"):
-			await sticker.after_combo_triggered(combo, pattern_id, word, combo_score)
+	if allow_after_triggers:
+		for sticker in get_active_stickers():
+			if sticker.has_method("after_combo_triggered"):
+				await sticker.after_combo_triggered(combo, pattern_id, word, combo_score)
 
 	return combo_score
 func debug_log_combo_trigger(combo, pattern_id, data, final_score):
@@ -1716,8 +1737,7 @@ func print_debug_trigger_summary():
 	if !debug_sticker_sandbox:
 		return
 
-	var counts := {}
-	var final_mults := {}
+	var letter_data := {}
 
 	for y in range(GRID_SIZE):
 		for x in range(GRID_SIZE):
@@ -1727,28 +1747,39 @@ func print_debug_trigger_summary():
 				continue
 
 			var letter = letter_state.letter
-			counts[letter] = counts.get(letter, 0) + letter_state.patterns_this_hand.size()
-			final_mults[letter] = letter_state.mult
+
+			letter_data[letter] = {
+				"trigger_count": letter_state.patterns_this_hand.size(),
+				"final_mult": letter_state.mult,
+				"patterns": letter_state.patterns_this_hand.duplicate()
+			}
 
 	print("=== DEBUG TRIGGER SUMMARY ===")
 
-	var letters = final_mults.keys()
+	var letters = letter_data.keys()
 	letters.sort()
 
 	var frequency_buckets := {}
-	
+
 	for letter in letters:
-		var trigger_count = counts.get(letter, 0)
+		var info = letter_data[letter]
+		var trigger_count = info["trigger_count"]
 
 		print(
 			letter,
 			": triggers=", trigger_count,
-			" final_mult=", final_mults[letter]
+			" final_mult=", info["final_mult"],
+			" patterns=", info["patterns"]
 		)
 
 		frequency_buckets[trigger_count] = frequency_buckets.get(trigger_count, 0) + 1
+
 	for trigger_count in frequency_buckets.keys():
-		debug_trigger_frequency_totals[trigger_count] = debug_trigger_frequency_totals.get(trigger_count, 0) + frequency_buckets[trigger_count]
+		debug_trigger_frequency_totals[trigger_count] = (
+			debug_trigger_frequency_totals.get(trigger_count, 0)
+			+ frequency_buckets[trigger_count]
+		)
+
 	print("\n=== TRIGGER FREQUENCY DISTRIBUTION ===")
 
 	var bucket_keys = frequency_buckets.keys()
@@ -1829,11 +1860,12 @@ func setup_debug_stickers():
 
 	print("=== DEBUG STICKER SANDBOX ENABLED ===")
 func draw_debug_letter() -> String:
-	var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXY"
-	var letter = alphabet.substr(debug_letter_draw_index % alphabet.length(), 1)
+	if debug_draw_order.is_empty():
+		return "E"
+
+	var letter = debug_draw_order[debug_letter_draw_index % debug_draw_order.size()]
 	debug_letter_draw_index += 1
 	return letter
-
 
 func debug_play_all_hands():
 	while debug_sticker_sandbox and game_phase == GamePhase.PLAYING and hands_left > 0 and debug_played_rows < GRID_SIZE:
@@ -1846,11 +1878,16 @@ func debug_select_next_row_cards():
 	if debug_played_rows >= GRID_SIZE:
 		return
 
-	var row_start = debug_played_rows * GRID_SIZE
+	var row_start = debug_played_rows * GRID_PLACE_SIZE
 	var target_letters := []
 
 	for i in range(GRID_PLACE_SIZE):
-		target_letters.append(char(65 + row_start + i))
+		var index = row_start + i
+
+		if index >= debug_draw_order.size():
+			return
+
+		target_letters.append(debug_draw_order[index])
 
 	selected_cards.clear()
 
