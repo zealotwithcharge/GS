@@ -31,7 +31,7 @@ const MIN_DRAW_WEIGHT_MULTIPLIER := 0.15
 @export var debug_log_trigger_order := true
 var debug_trigger_event_index := 0
 var debug_trigger_frequency_totals := {}
-@export var debug_animation_speed := 8.0
+@export var debug_animation_speed := 2.0
 
 @export var debug_auto_play_hands := true
 @export var debug_auto_select_next_row := true
@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	TooCoolForSchoolSticker
+	PencilSharpenerSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -302,6 +302,12 @@ var sticker_pool := [
 	"cost": 7,
 	"description": "D's and F's don't lose multipliers.",
 	"sticker": TooCoolForSchoolSticker
+},{
+	"id": "pencil_sharpener",
+	"name": "Pencil Sharpener",
+	"cost": 8,
+	"description": "You need one less letter to get the long word bonus.",
+	"sticker": PencilSharpenerSticker
 },
 ]
 var shop_sticker_items := []
@@ -1167,7 +1173,12 @@ func play_selected_cards():
 
 	reset_letter_hand_histories()
 
-	if selected_cards.size() > GRID_PLACE_SIZE:
+	var long_word_requirement := GRID_PLACE_SIZE + 1
+
+	if has_sticker_id("pencil_sharpener"):
+		long_word_requirement -= 1
+
+	if selected_cards.size() >= long_word_requirement:
 		await score_long_word_bonus()
 
 	var cards_to_place = get_cards_to_place()
@@ -1221,14 +1232,18 @@ func can_play_selected_cards():
 
 	var word = get_selected_word().to_lower()
 	return dictionary.has(word)
+func has_sticker_id(id: String) -> bool:
+	for sticker in get_active_stickers():
+		if sticker.sticker_id == id:
+			return true
 
+	return false
 
 func score_long_word_bonus():
 	var word = get_selected_word()
 	var length = word.length()
 
-	if length <= GRID_PLACE_SIZE:
-		return
+
 
 	if !dictionary.has(word.to_lower()):
 		return
@@ -1239,11 +1254,12 @@ func score_long_word_bonus():
 	total_score += bonus
 	score_label.text = "Score: " + str(total_score)
 
-
 func get_long_word_bonus(length):
 	var target = get_target_score()
 
 	match length:
+		5:
+			return int(target * 0.05)
 		6:
 			return int(target * 0.05)
 		7:
