@@ -10,6 +10,13 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_0xm2m")
+debug_sticker_sandbox = null
+debug_log_trigger_order = null
+debug_animation_speed = null
+debug_auto_play_hands = null
+debug_auto_select_next_row = null
+debug_add_test_stickers = null
+debug_impossible_target_score = null
 
 [node name="RootUI" type="VBoxContainer" parent="." unique_id=1307514089]
 layout_mode = 1

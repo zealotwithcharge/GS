@@ -400,6 +400,30 @@ var sticker_pool := [
 	"cost": 8,
 	"description": "If you would fail a grade, destroy this and repeat the grade after shop.",
 	"sticker": HeldBackSticker
+},{
+	"id": "teachers_pet",
+	"name": "Teacher's Pet",
+	"cost": 5,
+	"description": "Double Positive Teacher Bonuses",
+	"sticker": TeachersPetSticker
+},{
+	"id": "class_clown",
+	"name": "The Class Clown",
+	"cost": 5,
+	"description": "If a hand triggers the teacher's penalty, get 10% more score for the hand.",
+	"sticker": TeachersPetSticker
+},{
+	"id": "suffix_master",
+	"name": "Suffix Master",
+	"cost": 7,
+	"description": "D, S, and Y are drawn more often.",
+	"sticker": SuffixMasterSticker
+},{
+	"id": "in_motion",
+	"name": "In Motion",
+	"cost": 7,
+	"description": "I, N, and G are drawn more often.",
+	"sticker": InMotionSticker
 },
 ]
 var shop_sticker_items := []
@@ -1002,6 +1026,10 @@ func toggle_hand_view_mode():
 	update_hand_ui()
 func get_current_letter_weights() -> Dictionary:
 	var weights = base_letter_weights.duplicate()
+	for sticker in get_active_stickers():
+		if sticker.has_method("modify_letter_weights"):
+			weights = sticker.modify_letter_weights(weights)
+	
 	var board_counts := {}
 
 	for y in range(GRID_SIZE):
