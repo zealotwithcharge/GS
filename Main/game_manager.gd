@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	PalindromeSticker
+	DyslexiaSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -326,6 +326,12 @@ var sticker_pool := [
 	"cost": 10,
 	"description": "All palindromes trigger 4 times.",
 	"sticker": PalindromeSticker
+},{
+	"id": "dyslexia",
+	"name": "Dyslexia",
+	"cost": 12,
+	"description": "Every valid anagram triggers. Required score is doubled.",
+	"sticker": DyslexiaSticker
 },
 ]
 var shop_sticker_items := []
@@ -1329,7 +1335,29 @@ func place_blank_on_grid():
 
 	grid[current_row][current_col] = LetterState.new("_")
 	advance_grid_cursor()
+func get_valid_anagrams(word: String) -> Array:
+	var results := []
+	var sorted_word = sort_letters(word.to_lower())
 
+	for dictionary_word in dictionary.keys():
+		if dictionary_word.length() != word.length():
+			continue
+
+		if sort_letters(dictionary_word) == sorted_word:
+			results.append(dictionary_word)
+
+	return results
+
+
+func sort_letters(word: String) -> String:
+	var letters := []
+
+	for i in range(word.length()):
+		letters.append(word.substr(i, 1))
+
+	letters.sort()
+
+	return "".join(letters)
 
 func advance_grid_cursor():
 	current_col += 1
@@ -1480,7 +1508,14 @@ func score_lines_by_length(lines, length, direction):
 					score += await trigger_combo_as_word(combo, pattern_id, expanded_word, true)
 
 				continue
+			if has_sticker_id("dyslexia"):
+				var anagrams = get_valid_anagrams(word)
 
+				if !anagrams.is_empty():
+					for anagram in anagrams:
+						score += await trigger_combo_as_word(combo, pattern_id, anagram, true)
+
+					continue
 			if is_valid_combo(word):
 				score += await trigger_combo(combo, pattern_id, true, word)
 
