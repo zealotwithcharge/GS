@@ -31,3 +31,5 @@ func reset():
 	
 func after_combo_triggered(_combo, _pattern_id, _word, _score):
 	pass
+func modify_final_hand_score(hand_score: int) -> int:
+	return hand_score

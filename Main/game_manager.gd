@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	IntrovertSticker
+	BullySticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -350,6 +350,12 @@ var sticker_pool := [
 	"cost": 10,
 	"description": "Letters have triple growth for their first 3 triggers. On the fourth, the letter's mult and growth are set to 0 for the rest of the hand.",
 	"sticker": IntrovertSticker
+},{
+	"id": "bully",
+	"name": "The Bully",
+	"cost": 10,
+	"description": "If one letter triggers 6 more times than any other letter, double your score.",
+	"sticker": BullySticker
 }
 ]
 var shop_sticker_items := []
@@ -1247,7 +1253,8 @@ func play_selected_cards():
 	update_grid_ui()
 	update_stage_ui()
 
-	await score_grid()
+	var hand_score = await score_grid()
+	hand_score = apply_final_hand_score_modifiers(hand_score)
 	
 	print_debug_trigger_summary()
 	reset_letters_after_hand()
@@ -1255,7 +1262,19 @@ func play_selected_cards():
 	check_grade_result()
 	update_stage_ui()
 
+func apply_final_hand_score_modifiers(hand_score: int) -> int:
+	var modified_score = hand_score
 
+	for sticker in get_active_stickers():
+		modified_score = sticker.modify_final_hand_score(modified_score)
+
+	var bonus_score = modified_score - hand_score
+
+	if bonus_score != 0:
+		total_score += bonus_score
+		score_label.text = "Score: " + str(total_score)
+
+	return modified_score
 func get_selected_word():
 	var s = ""
 

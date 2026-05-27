@@ -13,7 +13,7 @@ func modify_score_data(data):
 		if trigger_count == 0:
 			letter_state.growth *= 3
 
-		elif trigger_count == 4:
+		elif trigger_count == 3:
 			letter_state.mult = 0
 			letter_state.growth = 0
 
