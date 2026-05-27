@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	SeeMeAfterClassSticker
+	HeldBackSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -394,6 +394,12 @@ var sticker_pool := [
 	"cost": 8,
 	"description": "Sell during a grade to lower current needed score by 25%. Add that amount to next grade.",
 	"sticker": SeeMeAfterClassSticker
+},{
+	"id": "held_back",
+	"name": "Held Back",
+	"cost": 8,
+	"description": "If you would fail a grade, destroy this and repeat the grade after shop.",
+	"sticker": HeldBackSticker
 },
 ]
 var shop_sticker_items := []
@@ -691,8 +697,7 @@ func check_grade_result():
 		complete_grade()
 		return
 
-	if debug_sticker_sandbox:
-		return
+	
 
 	if hands_left <= 0:
 		if can_hall_pass_grade():
@@ -721,6 +726,16 @@ func complete_grade():
 
 
 func fail_grade():
+	for sticker in owned_stickers:
+		if sticker.sticker_id == "held_back":
+			owned_stickers.erase(sticker)
+			grade_index -= 1
+			grade_index = max(grade_index, -1)
+			print("Held Back activated.")
+			open_shop()
+			return
+	if debug_sticker_sandbox:
+		return
 	game_phase = GamePhase.GAME_OVER
 	print("FAILED GRADE")
 
