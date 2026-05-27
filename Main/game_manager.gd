@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	DyslexiaSticker
+	DunceSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -332,6 +332,12 @@ var sticker_pool := [
 	"cost": 12,
 	"description": "Every valid anagram triggers. Required score is doubled.",
 	"sticker": DyslexiaSticker
+},{
+	"id": "dunce",
+	"name": "Dunce",
+	"cost": 9,
+	"description": "Trigger 3-letter patterns twice. Required score is increased by 20%.",
+	"sticker": DunceSticker
 },
 ]
 var shop_sticker_items := []
