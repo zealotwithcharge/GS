@@ -7,6 +7,14 @@ var sticker_id := "sticker"
 var resets_each_hand := false
 var resets_each_grade := true
 var game = null
+var is_active := false
+var uses_remaining := -1 # -1 = unlimited / not relevant
+
+func can_use(_context := {}) -> bool:
+	return is_active and (uses_remaining != 0)
+
+func use(_context := {}) -> bool:
+	return false
 
 var affected_letter_ids := {}
 func prevents_hand_reset(_letter_state) -> bool:

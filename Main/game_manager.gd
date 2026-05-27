@@ -19,7 +19,7 @@ const DISCARDS_PER_GRADE := 3
 const LESSON_IDS := ["H3", "H4", "H5", "V3", "V4", "V5", "D3", "D4", "D5"]
 const HAND_DUPLICATE_PENALTY := 0.35
 const MIN_DRAW_WEIGHT_MULTIPLIER := 0.15
-
+const ERASER_ROW_BUTTON_SIZE := Vector2(56, 56)
 
 
 # ============================================================
@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	NewKidInSchoolSticker
+	EraserSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -109,7 +109,9 @@ var hand_view_mode := HandViewMode.CIRCLE
 @onready var hand_view_toggle_button = $RootUI/GameplayUI/HBoxContainer/HandViewToggleButton
 
 @onready var score_label = $RootUI/GameplayUI/ScoreLabel
-@onready var grid_container = $RootUI/GameplayUI/BoardAndCircleHBox/GridArea/GridContainer
+@onready var grid_container = $RootUI/GameplayUI/BoardAndCircleHBox/GridArea/HBoxContainer/GridContainer
+@onready var eraser_button_container = $RootUI/GameplayUI/BoardAndCircleHBox/GridArea/HBoxContainer/EraserButtonVBox
+
 @onready var selected_container = $RootUI/GameplayUI/SelectedRowControls/SelectedContainer
 @onready var shift_left_button = $RootUI/GameplayUI/SelectedRowControls/ShiftLeftButton
 @onready var shift_right_button = $RootUI/GameplayUI/SelectedRowControls/ShiftRightButton
@@ -134,7 +136,8 @@ var hand_view_mode := HandViewMode.CIRCLE
 # ============================================================
 # Run State
 # ============================================================
-
+var pending_eraser_sticker = null
+var eraser_row_buttons := []
 var game_phase := GamePhase.PLAYING
 var is_paused := false
 var discards_left := DISCARDS_PER_GRADE
@@ -368,7 +371,13 @@ var sticker_pool := [
 	"cost": 3,
 	"description": "Nothing. You rule.",
 	"sticker": GoldStarSticker
-}
+}, {
+	"id": "eraser",
+	"name": "Eraser",
+	"cost": 8,
+	"description": "Erase a filled row. Gain +1 hand. 3 uses, then destroys itself.",
+	"sticker": EraserSticker
+},
 ]
 var shop_sticker_items := []
 var consumable_pool := [
@@ -394,6 +403,7 @@ func _ready():
 	load_dictionary()
 	create_grid()
 	create_teacher_order()
+	create_eraser_row_buttons()
 	pause_menu.visible = false
 	shop_panel.visible = false
 	gameplay_ui.visible = true
@@ -407,6 +417,7 @@ func _ready():
 	clear_button.pressed.connect(clear_unlocked_preview_cards)
 	restart_button.pressed.connect(_on_restart_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
+	
 	
 	if debug_sticker_sandbox:
 		setup_debug_sticker_sandbox()
@@ -432,7 +443,106 @@ func _ready():
 func _input(event):
 	if event.is_action_pressed("ui_cancel"):
 		toggle_pause_menu()
+		
+func create_eraser_row_buttons():
+	eraser_row_buttons.clear()
 
+	for row in range(GRID_SIZE):
+		var slot = CenterContainer.new()
+		slot.custom_minimum_size = ERASER_ROW_BUTTON_SIZE
+		slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+		var button = Button.new()
+		button.custom_minimum_size = Vector2(48, 48)
+		button.text = "✎"
+		button.tooltip_text = "Erase this row. Gain +1 hand."
+		button.pressed.connect(erase_row_with_eraser.bind(row))
+
+		slot.add_child(button)
+		eraser_button_container.add_child(slot)
+		eraser_row_buttons.append(button)
+
+	update_eraser_buttons()
+
+
+func update_eraser_buttons():
+	var eraser = get_eraser_sticker()
+
+	for row in range(GRID_SIZE):
+		var can_erase = (
+			eraser != null
+			and eraser.uses_remaining > 0
+			and row_is_filled(row)
+		)
+
+		var button = eraser_row_buttons[row]
+		button.disabled = !can_erase
+		button.modulate.a = 1.0 if can_erase else 0.0
+		button.mouse_filter = Control.MOUSE_FILTER_STOP if can_erase else Control.MOUSE_FILTER_IGNORE
+
+func get_eraser_sticker():
+	for sticker in owned_stickers:
+		if sticker.sticker_id == "eraser":
+			return sticker
+
+	return null
+
+
+func row_is_filled(row_index: int) -> bool:
+	for x in range(GRID_SIZE):
+		var letter_state = grid[row_index][x]
+
+		if letter_state == null:
+			return false
+
+		if letter_state.is_blank():
+			return false
+
+	return true
+
+
+func row_is_empty(row_index: int) -> bool:
+	for x in range(GRID_SIZE):
+		var letter_state = grid[row_index][x]
+
+		if letter_state == null:
+			return false
+
+		if !letter_state.is_blank():
+			return false
+
+	return true
+
+
+func erase_row_with_eraser(row_index: int):
+	var eraser = get_eraser_sticker()
+
+	if eraser == null:
+		return
+
+	if eraser.uses_remaining <= 0:
+		return
+
+	if !row_is_filled(row_index):
+		return
+
+	for x in range(GRID_SIZE):
+		grid[row_index][x] = LetterState.new("_")
+
+	hands_left += 1
+	game_phase = GamePhase.PLAYING
+	eraser.uses_remaining -= 1
+
+	if eraser.uses_remaining <= 0:
+		owned_stickers.erase(eraser)
+
+	current_row = row_index
+	current_col = 0
+
+	update_grid_ui()
+	update_eraser_buttons()
+	update_owned_permanent_ui()
+	update_stage_ui()
 
 # ============================================================
 # Pause Menu
@@ -1240,7 +1350,7 @@ func play_selected_cards():
 
 	if selected_cards.size() >= long_word_requirement:
 		await score_long_word_bonus()
-
+	move_cursor_to_next_empty_row_if_any()
 	var cards_to_place = get_cards_to_place()
 	var played_count = cards_to_place.size()
 
@@ -1384,6 +1494,12 @@ func place_blank_on_grid():
 
 	grid[current_row][current_col] = LetterState.new("_")
 	advance_grid_cursor()
+func move_cursor_to_next_empty_row_if_any():
+	for y in range(GRID_SIZE):
+		if row_is_empty(y):
+			current_row = y
+			current_col = 0
+			return
 func get_valid_anagrams(word: String) -> Array:
 	var results := []
 	var sorted_word = sort_letters(word.to_lower())
@@ -1735,7 +1851,14 @@ func calculate_score_from_data(data):
 	score = int(score * data["final_multiplier"])
 
 	return score
+func clear_row(row_index: int) -> void:
+	if row_index < 0 or row_index >= GRID_SIZE:
+		return
 
+	for col_index in range(GRID_SIZE):
+		grid[row_index][col_index] = LetterState.new("_")
+
+	update_grid_ui()
 func get_letters_from_combo(combo):
 	var letters := []
 
@@ -1952,7 +2075,7 @@ func draw_debug_letter() -> String:
 	return letter
 
 func debug_play_all_hands():
-	while debug_sticker_sandbox and game_phase == GamePhase.PLAYING and hands_left > 0 and debug_played_rows < GRID_SIZE:
+	while debug_sticker_sandbox and game_phase == GamePhase.PLAYING and hands_left > 0:
 		await get_tree().create_timer(0.15).timeout
 		await play_selected_cards()
 
@@ -1960,7 +2083,7 @@ func debug_play_all_hands():
 
 func debug_select_next_row_cards():
 	if debug_played_rows >= GRID_SIZE:
-		return
+		debug_played_rows = current_row
 
 	var row_start = debug_played_rows * GRID_PLACE_SIZE
 	var target_letters := []
@@ -2244,6 +2367,7 @@ func update_grid_ui():
 			var label = cell.get_node("Label")
 			label.text = grid[y][x].letter
 			i += 1
+	update_eraser_buttons()
 
 
 func reset_grid_visuals():
