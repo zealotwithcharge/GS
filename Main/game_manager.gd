@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	SubstituteTeacherSticker
+	SeeMeAfterClassSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -90,7 +90,7 @@ enum HandViewMode {
 var teacher_order := []
 var current_teacher = null
 var hand_view_mode := HandViewMode.CIRCLE
-
+var target_score_debt := 0
 # ============================================================
 # Node References
 # ============================================================
@@ -144,7 +144,8 @@ var discards_left := DISCARDS_PER_GRADE
 var money := 25
 var hands_left := HANDS_PER_GRADE
 var total_score := 0
-
+var current_target_score_modifier := 0
+var next_target_score_modifier := 0
 var school_index := 0
 var grade_index := 0
 
@@ -387,6 +388,12 @@ var sticker_pool := [
 	"cost": 6,
 	"description": "Sell this to replace next grade's teacher.",
 	"sticker": SubstituteTeacherSticker
+},{
+	"id": "see_me_after_class",
+	"name": "See Me After Class",
+	"cost": 8,
+	"description": "Sell during a grade to lower current needed score by 25%. Add that amount to next grade.",
+	"sticker": SeeMeAfterClassSticker
 },
 ]
 var shop_sticker_items := []
@@ -649,6 +656,8 @@ func get_target_score():
 	var school = get_current_school()
 	var target = school["base_target"] + grade_index * school["target_growth"]
 
+	target += current_target_score_modifier
+
 	for sticker in get_active_stickers():
 		if sticker.has_method("modify_target_score"):
 			target = sticker.modify_target_score(target)
@@ -759,7 +768,8 @@ func start_grade():
 
 	create_grid()
 	apply_teacher_for_current_grade()
-
+	current_target_score_modifier = next_target_score_modifier
+	next_target_score_modifier = 0
 	draw_to_hand()
 	update_grid_ui()
 	update_hand_ui()
