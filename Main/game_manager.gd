@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	DunceSticker
+	AppleSauceSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -338,7 +338,13 @@ var sticker_pool := [
 	"cost": 9,
 	"description": "Trigger 3-letter patterns twice. Required score is increased by 20%.",
 	"sticker": DunceSticker
-},
+},{
+	"id": "apple_sauce",
+	"name": "Apple Sauce",
+	"cost": 7,
+	"description": "If a letter scores horizontally and vertically, gain $2.",
+	"sticker": AppleSauceSticker
+}
 ]
 var shop_sticker_items := []
 var consumable_pool := [
