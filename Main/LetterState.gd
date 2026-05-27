@@ -30,9 +30,11 @@ func reset_hand_history():
 func reset(reset_type: String):
 	if reset_type == "hand":
 		mult = 0
+		growth = 1
 		patterns_this_hand.clear()
 
 	elif reset_type == "grade":
 		mult = 0
+		growth = 1
 		patterns_this_hand.clear()
 		patterns_this_grade.clear()
