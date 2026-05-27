@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	BullySticker
+	NewKidInSchoolSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -356,6 +356,12 @@ var sticker_pool := [
 	"cost": 10,
 	"description": "If one letter triggers 6 more times than any other letter, double your score.",
 	"sticker": BullySticker
+}, {
+	"id": "new_kid_in_school",
+	"name": "New Kid In School",
+	"cost": 8,
+	"description": "If a letter is only used once on the grid, it has triple growth.",
+	"sticker": NewKidInSchoolSticker
 }
 ]
 var shop_sticker_items := []
