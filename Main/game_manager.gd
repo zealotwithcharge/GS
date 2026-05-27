@@ -221,15 +221,49 @@ var score_upgrades := {
 
 var teacher_pool := [
 	{
-		"name": "Ms. Vowels",
-		"description": "Vowels grow faster this grade.",
-		"stickers": [VowelLoverSticker]
-	},
+	"name": "Math Olympiad",
+	"description": "Gain $2 every time X, Y, or Z triggers.",
+	"stickers": [MathOlympiadTeacherSticker]
+},
 	{
-		"name": "Mr. Plain",
-		"description": "No modifier this grade.",
-		"stickers": []
-	},
+	"name": "Music Teacher",
+	"description": "Note letters gain +1 growth.",
+	"stickers": [MusicTeacherSticker]
+},{
+	"name": "Spelling Bee",
+	"description": "If the target word scores, gain $5. The word changes after it pays.",
+	"stickers": [SpellingBeeTeacherSticker]
+},{
+	"name": "Evil Math Teacher",
+	"description": "All letters have -1 growth until X, Y, or Z scores. X, Y, and Z are drawn more often.",
+	"stickers": [EvilMathTeacherSticker]
+},{
+	"name": "Evil Music Teacher",
+	"description": "Note letters must be played in order: C, D, E, F, G, A, B.",
+	"stickers": [EvilMusicTeacherSticker]
+},{
+	"name": "Science Teacher",
+	"description": "All letters have -1 growth until a noble element scores.",
+	"stickers": [ScienceTeacherSticker]
+},{
+	"name": "History Teacher",
+	"description": "Letters have -1 growth until played a second time.",
+	"stickers": [HistoryTeacherSticker]
+},
+
+{
+	"name": "PE Teacher",
+	"description": "Patterns without P or E do not score. P and E are drawn more often.",
+	"stickers": [PETeacherSticker]
+},{
+	"name": "Detention",
+	"description": "4 stickers are disabled. One is released after each hand.",
+	"stickers": [DetentionTeacherSticker]
+},{
+	"name": "Group Project",
+	"description": "Letters do not score until they have 3 or more mult.",
+	"stickers": [GroupProjectTeacherSticker]
+},
 		{
 		"name": "Mr. Plain2",
 		"description": "No modifier this grade.",
@@ -826,6 +860,7 @@ func apply_teacher_for_current_grade():
 	for sticker_class in current_teacher["stickers"]:
 		var sticker = sticker_class.new()
 		sticker.game = self
+		sticker.reset()
 		teacher_stickers.append(sticker)
 
 
@@ -1499,6 +1534,11 @@ func can_play_selected_cards():
 	if selected_cards.is_empty():
 		return false
 
+	for sticker in get_active_stickers():
+		if sticker.has_method("can_play_selected_cards"):
+			if !sticker.can_play_selected_cards(selected_cards):
+				return false
+
 	if selected_cards.size() <= GRID_PLACE_SIZE:
 		return true
 
@@ -2106,9 +2146,25 @@ func print_debug_final_trigger_summary():
 			trigger_count,
 			" times"
 		)
-func get_active_stickers() -> Array:
-	return owned_stickers + teacher_stickers
+func get_active_stickers():
+	var stickers = owned_stickers + teacher_stickers
+	var active := []
 
+	var detention_teacher = null
+
+	for sticker in teacher_stickers:
+		if sticker.sticker_id == "detention_teacher":
+			detention_teacher = sticker
+			break
+
+	for sticker in stickers:
+		if detention_teacher != null:
+			if detention_teacher.is_sticker_detained(sticker):
+				continue
+
+		active.append(sticker)
+
+	return active
 func apply_teacher_modifiers(teacher):
 	teacher_stickers.clear()
 
