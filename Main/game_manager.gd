@@ -362,6 +362,12 @@ var sticker_pool := [
 	"cost": 8,
 	"description": "If a letter is only used once on the grid, it has triple growth.",
 	"sticker": NewKidInSchoolSticker
+}, {
+	"id": "gold_star",
+	"name": "Gold Star",
+	"cost": 3,
+	"description": "Nothing. You rule.",
+	"sticker": GoldStarSticker
 }
 ]
 var shop_sticker_items := []
