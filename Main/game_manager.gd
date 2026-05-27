@@ -39,7 +39,7 @@ var debug_trigger_frequency_totals := {}
 @export var debug_impossible_target_score := 999999999
 # CHANGE THIS TO TEST DIFFERENT STICKERS
 var debug_test_stickers = [
-	EraserSticker
+	SubstituteTeacherSticker
 ]
 # CHANGE THIS TO CONTROL VALID DEBUG WORDS
 var debug_dictionary_words := [
@@ -243,6 +243,10 @@ var teacher_pool := [
 		"name": "Mr. Plain4",
 		"description": "No modifier this grade.",
 		"stickers": []
+	},{
+		"name": "Mr. Plain5",
+		"description": "No modifier this grade.",
+		"stickers": []
 	},
 ]
 
@@ -377,6 +381,12 @@ var sticker_pool := [
 	"cost": 8,
 	"description": "Erase a filled row. Gain +1 hand. 3 uses, then destroys itself.",
 	"sticker": EraserSticker
+},{
+	"id": "substitute_teacher",
+	"name": "Substitute Teacher",
+	"cost": 6,
+	"description": "Sell this to replace next grade's teacher.",
+	"sticker": SubstituteTeacherSticker
 },
 ]
 var shop_sticker_items := []
@@ -672,6 +682,9 @@ func check_grade_result():
 		complete_grade()
 		return
 
+	if debug_sticker_sandbox:
+		return
+
 	if hands_left <= 0:
 		if can_hall_pass_grade():
 			complete_grade()
@@ -923,10 +936,18 @@ func update_owned_permanent_ui():
 		permanent_item_bar.add_child(label)
 
 	for sticker in owned_stickers:
-		var label = Label.new()
-		label.text = sticker.sticker_name
-		label.tooltip_text = sticker.description
-		permanent_item_bar.add_child(label)
+		var button = Button.new()
+		button.text = sticker.sticker_name
+
+		if sticker.sell_value > 0:
+			button.text += " | Sell $" + str(sticker.sell_value)
+		else:
+			button.text += " | Sell"
+
+		button.tooltip_text = sticker.description
+		button.pressed.connect(sell_sticker.bind(sticker))
+
+		permanent_item_bar.add_child(button)
 
 
 func _on_next_grade_pressed():
@@ -1317,6 +1338,21 @@ func clear_unlocked_preview_cards():
 		preview_offset = get_active_window_start()
 
 	update_hand_ui()
+func sell_sticker(sticker):
+	if !owned_stickers.has(sticker):
+		return
+
+	if !sticker.can_sell:
+		return
+
+	sticker.on_sell(self)
+
+	money += sticker.sell_value
+	owned_stickers.erase(sticker)
+
+	update_owned_permanent_ui()
+	update_stage_ui()
+	update_teacher_viewer()
 # ============================================================
 # Play Hand
 # ============================================================
@@ -2031,8 +2067,42 @@ func clear_teacher_modifiers():
 		sticker.reset()
 
 	teacher_stickers.clear()
+func reroll_next_teacher():
+	var next_index = grade_index + 1
+
+	if next_index >= get_current_school()["grades"]:
+		print("No next teacher to replace.")
+		return
+
+	var old_teacher = teacher_order[next_index]
+	var new_teacher = get_random_teacher_for_slot(old_teacher, next_index)
+
+	teacher_order[next_index] = new_teacher
+
+	print("Substitute Teacher replaced ", old_teacher["name"], " with ", new_teacher["name"])
+	update_teacher_viewer()
 
 
+func get_random_teacher_for_slot(old_teacher, slot_index: int):
+	var used_teacher_names := {}
+
+	for i in range(get_current_school()["grades"]):
+		if i == slot_index:
+			continue
+
+		var teacher = teacher_order[i % teacher_order.size()]
+		used_teacher_names[teacher["name"]] = true
+
+	var options := []
+
+	for teacher in teacher_pool:
+		if !used_teacher_names.has(teacher["name"]) and teacher["name"] != old_teacher["name"]:
+			options.append(teacher)
+
+	if options.is_empty():
+		return teacher_order[slot_index]
+
+	return options.pick_random()
 # ============================================================
 # Debug Sticker Sandbox
 # ============================================================

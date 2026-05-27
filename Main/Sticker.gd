@@ -9,6 +9,11 @@ var resets_each_grade := true
 var game = null
 var is_active := false
 var uses_remaining := -1 # -1 = unlimited / not relevant
+var sell_value := 0
+var can_sell := true
+
+func on_sell(game):
+	pass
 
 func can_use(_context := {}) -> bool:
 	return is_active and (uses_remaining != 0)
