@@ -20,14 +20,15 @@ const LESSON_IDS := ["H3", "H4", "H5", "V3", "V4", "V5", "D3", "D4", "D5"]
 const HAND_DUPLICATE_PENALTY := 0.35
 const MIN_DRAW_WEIGHT_MULTIPLIER := 0.15
 const ERASER_ROW_BUTTON_SIZE := Vector2(56, 56)
-
+const INTEREST_DIVISOR := 5
+const MAX_INTEREST := 5
 
 # ============================================================
 # Debug Sticker Sandbox
 # ============================================================
 
 #set to true for debug mode
-@export var debug_sticker_sandbox := true
+@export var debug_sticker_sandbox := false
 @export var debug_log_trigger_order := true
 var debug_trigger_event_index := 0
 var debug_trigger_frequency_totals := {}
@@ -121,7 +122,7 @@ var target_score_debt := 0
 @onready var lock_button = $RootUI/GameplayUI/HBoxContainer/VBoxContainer/LockButton
 @onready var clear_button = $RootUI/GameplayUI/HBoxContainer/VBoxContainer/ClearButton
 @onready var restart_button = $PauseMenu/PausePanel/VBoxContainer/RestartRunButton
-
+@onready var restart_button2 = $PauseMenu/PanelContainer/RestartRunButton
 @onready var perma_shop = $RootUI/ShopPanel/PermaShop
 @onready var consume_shop = $RootUI/ShopPanel/ConsumeShop
 @onready var next_grade_button = $RootUI/ShopPanel/NextGradeButton
@@ -131,8 +132,8 @@ var target_score_debt := 0
 @onready var upgrade_list = $PauseMenu/PausePanel/VBoxContainer/UpgradeViewer/UpgradeList
 @onready var resume_button = $PauseMenu/PausePanel/VBoxContainer/ResumeButton
 @onready var quit_button = $PauseMenu/PausePanel/VBoxContainer/QuitGameButton
-
-
+@onready var lose_screen = $PauseMenu/PanelContainer
+@onready var pause_panel = $PauseMenu/PausePanel
 # ============================================================
 # Run State
 # ============================================================
@@ -141,7 +142,7 @@ var eraser_row_buttons := []
 var game_phase := GamePhase.PLAYING
 var is_paused := false
 var discards_left := DISCARDS_PER_GRADE
-var money := 25
+var money := 5
 var hands_left := HANDS_PER_GRADE
 var total_score := 0
 var current_target_score_modifier := 0
@@ -289,8 +290,8 @@ var schools := [
 	{
 		"name": "Elementary School",
 		"grades": 5,
-		"base_target": 500,
-		"target_growth": 75,
+		"base_target": 300,
+		"target_growth": 100,
 		"reward": 5
 	},
 	{
@@ -440,13 +441,15 @@ var sticker_pool := [
 	"cost": 5,
 	"description": "Double Positive Teacher Bonuses",
 	"sticker": TeachersPetSticker
-},{
-	"id": "class_clown",
-	"name": "The Class Clown",
-	"cost": 5,
-	"description": "If a hand triggers the teacher's penalty, get 10% more score for the hand.",
-	"sticker": TeachersPetSticker
-},{
+},
+#{
+	#"id": "class_clown",
+	#"name": "The Class Clown",
+	#"cost": 5,
+	#"description": "If a hand triggers the teacher's penalty, get 10% more score for the hand.",
+	#"sticker": TeachersPetSticker
+#},
+{
 	"id": "suffix_master",
 	"name": "Suffix Master",
 	"cost": 7,
@@ -458,6 +461,12 @@ var sticker_pool := [
 	"cost": 7,
 	"description": "I, N, and G are drawn more often.",
 	"sticker": InMotionSticker
+},{
+	"id": "wordler",
+	"name": "Wordler",
+	"cost": 5,
+	"description": "Trigger 5-letter patterns twice.",
+	"sticker": WordlerSticker
 },
 ]
 var shop_sticker_items := []
@@ -497,6 +506,7 @@ func _ready():
 	lock_button.pressed.connect(toggle_preview_lock)
 	clear_button.pressed.connect(clear_unlocked_preview_cards)
 	restart_button.pressed.connect(_on_restart_pressed)
+	restart_button2.pressed.connect(_on_restart_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	
 	
@@ -522,7 +532,7 @@ func _ready():
 
 
 func _input(event):
-	if event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
 		toggle_pause_menu()
 		
 func create_eraser_row_buttons():
@@ -775,12 +785,20 @@ func complete_grade():
 	game_phase = GamePhase.SHOP
 
 	var reward = get_grade_reward()
-	money += reward
+	var interest_bonus = min(int(money / 5), 5)
+	var discard_bonus = discards_left
+	var total_bonus = reward + interest_bonus + discard_bonus
+
+	money += total_bonus
 
 	print("Passed ", get_current_school()["name"], " Grade ", get_current_grade_number())
-	print("Earned $", reward)
+	print("Grade reward: $", reward)
+	print("Interest bonus: $", interest_bonus)
+	print("Discard bonus: $", discard_bonus)
+	print("Total earned: $", total_bonus)
 
 	open_shop()
+
 
 
 func fail_grade():
@@ -796,6 +814,9 @@ func fail_grade():
 		return
 	game_phase = GamePhase.GAME_OVER
 	print("FAILED GRADE")
+	pause_menu.visible = true
+	pause_panel.visible = false
+	lose_screen.visible = true
 
 
 func win_run():
@@ -1404,13 +1425,13 @@ func toggle_preview_lock():
 
 	if has_locked_cards():
 		locked_cards.clear()
-		lock_button.text = "🔒"
+		lock_button.text = "Lock"
 	else:
 		for card in selected_cards:
 			if !locked_cards.has(card):
 				locked_cards.append(card)
 
-		lock_button.text = "🔓"
+		lock_button.text = "Unlock"
 
 	update_hand_ui()
 func clear_unlocked_preview_cards():
@@ -1490,7 +1511,7 @@ func play_selected_cards():
 
 	selected_cards.clear()
 	locked_cards.clear()
-	lock_button.text = "🔒"
+	lock_button.text = "Lock"
 	preview_offset = get_active_window_start()
 
 	hands_left -= 1
@@ -2050,25 +2071,19 @@ func all_same_letter(word: String) -> bool:
 func load_dictionary():
 	dictionary.clear()
 
-	if debug_sticker_sandbox:
-		for word in debug_dictionary_words:
-			dictionary[word.to_lower()] = true
-
-		print("=== DEBUG DICTIONARY LOADED ===")
-		print(dictionary.keys())
-		return
-
 	var file = FileAccess.open("res://enable1.txt", FileAccess.READ)
 
 	if file == null:
-		push_error("Could not load dictionary at res://enable1.txt")
+		push_error("WEB BUG: Could not load dictionary at res://enable1.txt")
+		print("WEB BUG: enable1.txt failed to load")
 		return
 
 	while not file.eof_reached():
 		var word = file.get_line().strip_edges().to_lower()
-
 		if word != "":
 			dictionary[word] = true
+
+	print("Dictionary loaded: ", dictionary.size())
 func print_debug_trigger_summary():
 	if !debug_sticker_sandbox:
 		return

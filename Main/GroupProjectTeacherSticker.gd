@@ -8,7 +8,7 @@ func _init():
 
 func modify_score_data(data: Dictionary) -> Dictionary:
 	for entry in data["letter_scores"]:
-		if entry["base_mult"] < 3:
+		if entry["base_mult"] < 2:
 			entry["multiplier"] = 0.0
 
 	return data

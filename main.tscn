@@ -435,7 +435,7 @@ alignment = 1
 
 [node name="ShiftLeftButton" type="Button" parent="RootUI/GameplayUI/SelectedRowControls" unique_id=1193353809]
 layout_mode = 2
-text = "◀"
+text = "<"
 
 [node name="SelectedContainer" type="HBoxContainer" parent="RootUI/GameplayUI/SelectedRowControls" unique_id=1839187124]
 layout_mode = 2
@@ -443,7 +443,7 @@ alignment = 1
 
 [node name="ShiftRightButton" type="Button" parent="RootUI/GameplayUI/SelectedRowControls" unique_id=875952241]
 layout_mode = 2
-text = "▶"
+text = ">"
 
 [node name="LinearHandContainer" type="Control" parent="RootUI/GameplayUI" unique_id=1463587234]
 layout_mode = 2
@@ -473,12 +473,12 @@ layout_mode = 2
 [node name="LockButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer/VBoxContainer" unique_id=976037237]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
-text = "🔒"
+text = "Lock"
 
 [node name="ClearButton" type="Button" parent="RootUI/GameplayUI/HBoxContainer/VBoxContainer" unique_id=900930732]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
-text = "🧹"
+text = "Clear"
 
 [node name="ShopPanel" type="VBoxContainer" parent="RootUI" unique_id=1748427424]
 layout_mode = 2
@@ -586,3 +586,22 @@ text = "Restart"
 [node name="QuitGameButton" type="Button" parent="PauseMenu/PausePanel/VBoxContainer" unique_id=1175531142]
 layout_mode = 2
 text = "Quit Game"
+
+[node name="PanelContainer" type="VBoxContainer" parent="PauseMenu" unique_id=605513617]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="FailLabel" type="Label" parent="PauseMenu/PanelContainer" unique_id=167763097]
+layout_mode = 2
+text = "You lose!"
+horizontal_alignment = 1
+
+[node name="RestartRunButton" type="Button" parent="PauseMenu/PanelContainer" unique_id=876281052]
+layout_mode = 2
+text = "Restart"
