@@ -530,10 +530,71 @@ func _ready():
 	if debug_sticker_sandbox and debug_auto_play_hands:
 		call_deferred("debug_play_all_hands")
 
-
+#NOTE: Breaks with debugger enabled
 func _input(event):
 	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause"):
 		toggle_pause_menu()
+		return
+	if !(event is InputEventKey):
+		return
+	if !event.pressed or event.echo:
+		return
+	if is_paused:
+		if event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
+			_on_resume_pressed()
+		return
+	if game_phase == GamePhase.PLAYING:
+		var typed_letter := char(event.unicode).to_upper()
+		
+		if typed_letter.length() == 1 and typed_letter >= "A" and typed_letter <= "Z":
+			type_letter_from_hand(typed_letter)
+			return
+		
+	match event.keycode:
+		KEY_LEFT:
+			shift_preview_left()
+		KEY_RIGHT:
+			shift_preview_right()
+		KEY_ENTER, KEY_SPACE:
+			if game_phase == GamePhase.PLAYING:
+				call_deferred("play_selected_cards")
+			elif game_phase == GamePhase.SHOP:
+				_on_next_grade_pressed()
+		KEY_BACKSPACE:
+			remove_last_unlocked_typed_card()
+		KEY_DELETE:
+			call_deferred("discard_selected_cards")
+		KEY_L:
+			toggle_preview_lock()
+		KEY_C:
+			clear_unlocked_preview_cards()
+		KEY_TAB:
+			toggle_hand_view_mode()
+
+func type_letter_from_hand(letter: String):
+	if selected_cards.size() >= MAX_SELECTED_CARDS:
+		return
+	for card in hand:
+		if selected_cards.has(card):
+			continue
+		if card["letter"] == letter:
+			selected_cards.append(card)
+			if !has_locked_cards():
+				auto_center_preview()
+			update_hand_ui()
+			return
+
+func remove_last_unlocked_typed_card():
+	for i in range(selected_cards.size() -1, -1, -1):
+		var card = selected_cards[i]
+		if locked_cards.has(card):
+			continue
+		selected_cards.remove_at(i)
+		if !has_locked_cards():
+			auto_center_preview()
+		update_hand_ui()
+		return
+
 		
 func create_eraser_row_buttons():
 	eraser_row_buttons.clear()
