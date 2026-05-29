@@ -150,6 +150,7 @@ var current_target_score_modifier := 0
 var next_target_score_modifier := 0
 var school_index := 0
 var grade_index := 0
+var preview_grid_tiles := []
 
 var base_letter_weights := {
 	"A": 8,
@@ -1381,8 +1382,45 @@ func start_preview_drag(card_index):
 	dragging_preview_index = card_index
 	drag_start_mouse_pos = get_viewport().get_mouse_position()
 	is_dragging_preview_card = false
+func clear_preview_grid():
+	for tile in preview_grid_tiles:
+		if is_instance_valid(tile):
+			tile.queue_free()
+
+	preview_grid_tiles.clear()
 
 
+func create_grid_preview_tile(card):
+	var ghost = CARD_SCENE.instantiate()
+	ghost.setup(card, false)
+	ghost.modulate.a = 0.35
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ghost.scale = PREVIEW_CARD_SCALE
+	ghost.z_index = 50
+	return ghost
+
+
+func update_preview_grid():
+	clear_preview_grid()
+
+	var cards_to_preview = get_cards_to_place()
+
+	for i in range(cards_to_preview.size()):
+		var card = cards_to_preview[i]
+		var col = current_col + i
+		var row = current_row
+
+		if col >= GRID_SIZE:
+			break
+
+		var cell_index = row * GRID_SIZE + col
+		var cell = grid_container.get_child(cell_index)
+
+		var ghost = create_grid_preview_tile(card)
+		cell.add_child(ghost)
+		ghost.position = cell.size / 2 - ghost.size * ghost.scale / 2
+
+		preview_grid_tiles.append(ghost)
 func update_preview_drag():
 	var mouse_pos = get_viewport().get_mouse_position()
 
@@ -1590,6 +1628,7 @@ func play_selected_cards():
 	reset_hand_stickers()
 	check_grade_result()
 	update_stage_ui()
+	clear_preview_grid()
 
 func apply_final_hand_score_modifiers(hand_score: int) -> int:
 	var modified_score = hand_score
@@ -2545,6 +2584,7 @@ func update_selected_preview_ui():
 	for i in range(PREVIEW_SLOT_COUNT):
 		var slot = create_preview_slot(i, active_start)
 		selected_container.add_child(slot)
+	update_preview_grid()
 
 
 func create_preview_slot(slot_index, active_start):
