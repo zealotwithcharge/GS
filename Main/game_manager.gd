@@ -105,6 +105,7 @@ var target_score_debt := 0
 @onready var money_label = $RootUI/TopBar/MoneyLabel
 @onready var target_label = $RootUI/TopBar/TargetLabel
 @onready var hands_label = $RootUI/TopBar/HandsLabel
+@onready var teacher_label = $RootUI/TeacherLabel
 @onready var circle_hand_container = $RootUI/GameplayUI/BoardAndCircleHBox/HandArea/CircleHandContainer
 @onready var linear_hand_container = $RootUI/GameplayUI/LinearHandContainer
 @onready var hand_view_toggle_button = $RootUI/GameplayUI/HBoxContainer/HandViewToggleButton
@@ -812,9 +813,9 @@ func update_stage_ui():
 	var teacher_text := ""
 
 	if current_teacher != null:
-		teacher_text = " | Teacher: " + current_teacher["name"]
+		teacher_label.text = "Teacher: " + current_teacher["name"] + " " + current_teacher["description"]
 
-	stage_label.text = get_current_school()["name"] + " - Grade " + str(get_current_grade_number()) + teacher_text
+	stage_label.text = get_current_school()["name"] + " - Grade " + str(get_current_grade_number())
 	money_label.text = "$" + str(money)
 	target_label.text = "Target: " + str(get_target_score())
 	hands_label.text = "Hands: " + str(hands_left) + " | Discards: " + str(discards_left)
